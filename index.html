@@ -6,166 +6,228 @@
     <title>PIDron - локальний емулятор PID</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Локальний симулятор</p>
-        <h1>PIDron</h1>
-      </div>
-      <div class="topbar-actions">
-        <button id="optimizeBtn" class="primary-btn" type="button">Підібрати PID</button>
-        <button id="simulateBtn" class="secondary-btn" type="button">Оновити симуляцію</button>
-      </div>
-    </header>
+  <body data-theme="light">
+    <div class="app-shell">
+      <nav class="rail" aria-label="Навігація PIDron">
+        <div class="brand-mark">P</div>
+        <a href="#build" class="rail-item active" title="Сетап">⌘</a>
+        <a href="#drone" class="rail-item" title="Дрон">✣</a>
+        <a href="#pid" class="rail-item" title="PID">∿</a>
+        <a href="#settings" class="rail-item" title="Налаштування">⚙</a>
+      </nav>
 
-    <main class="app-layout">
-      <aside class="panel controls-panel">
-        <div class="panel-heading">
-          <h2>Конфігурація</h2>
-          <select id="presetSelect" aria-label="Пресет дрона"></select>
-        </div>
-
-        <section class="control-group">
-          <h3>Рама і схема</h3>
-          <div class="grid-2">
-            <label>
-              Клас рами
-              <select id="frameClass"></select>
-            </label>
-            <label>
-              Схема
-              <select id="layout"></select>
-            </label>
-            <label>
-              Пропульсивна схема
-              <select id="pusher"></select>
-            </label>
-            <label>
-              Розмір, дюйми
-              <input id="frameSize" type="number" min="2" max="16" step="0.1" />
-            </label>
-            <label>
-              Плече, мм
-              <input id="armLength" type="number" min="80" max="520" step="5" />
-            </label>
-            <label>
-              Маса рами, г
-              <input id="frameMass" type="number" min="80" max="2500" step="10" />
-            </label>
-            <label>
-              Корисне навантаження, г
-              <input id="payloadMass" type="number" min="0" max="2000" step="10" />
-            </label>
-            <label>
-              Розподіл маси
-              <input id="massSpread" type="range" min="0.35" max="0.85" step="0.01" />
-              <span id="massSpreadValue" class="range-value"></span>
-            </label>
+      <main class="main-app">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">Локальний симулятор</p>
+            <h1>PIDron</h1>
           </div>
-        </section>
-
-        <section class="control-group">
-          <h3>Мотори, пропи, батарея</h3>
-          <div class="grid-2">
-            <label>
-              KV мотора
-              <input id="motorKv" type="number" min="200" max="4000" step="10" />
-            </label>
-            <label>
-              Статор, мм
-              <input id="stator" type="text" inputmode="numeric" />
-            </label>
-            <label>
-              Діаметр пропа, дюйми
-              <input id="propDiameter" type="number" min="2" max="14" step="0.1" />
-            </label>
-            <label>
-              Крок пропа, дюйми
-              <input id="propPitch" type="number" min="1" max="8" step="0.1" />
-            </label>
-            <label>
-              Лопатей
-              <input id="propBlades" type="number" min="2" max="6" step="1" />
-            </label>
-            <label>
-              Комірок LiPo
-              <input id="batteryCells" type="number" min="2" max="12" step="1" />
-            </label>
-            <label>
-              Ємність, mAh
-              <input id="batteryMah" type="number" min="450" max="30000" step="50" />
-            </label>
-            <label>
-              Опір батареї, mOhm
-              <input id="batteryResistance" type="number" min="6" max="180" step="1" />
-            </label>
+          <div class="header-actions">
+            <select id="presetSelect" aria-label="Пресет дрона"></select>
+            <button id="optimizeBtn" class="primary-btn" type="button">Підібрати PID</button>
+            <button id="simulateBtn" class="secondary-btn" type="button">Оновити</button>
           </div>
-        </section>
+        </header>
 
-        <section class="control-group">
-          <h3>Середовище і фільтри</h3>
-          <div class="grid-2">
-            <label>
-              Motor lag, мс
-              <input id="motorLag" type="number" min="4" max="80" step="1" />
-            </label>
-            <label>
-              Фільтрація
-              <select id="filtering"></select>
-            </label>
-            <label>
-              Шум гіроскопа
-              <input id="noise" type="range" min="0" max="1" step="0.01" />
-              <span id="noiseValue" class="range-value"></span>
-            </label>
-            <label>
-              Вітер
-              <input id="wind" type="range" min="0" max="1" step="0.01" />
-              <span id="windValue" class="range-value"></span>
-            </label>
-            <label>
-              Агресивність стилю
-              <input id="style" type="range" min="0" max="1" step="0.01" />
-              <span id="styleValue" class="range-value"></span>
-            </label>
-            <label>
-              Цільовий rate, °/с
-              <input id="targetRate" type="number" min="120" max="900" step="10" />
-            </label>
-          </div>
-        </section>
-      </aside>
-
-      <section class="workspace">
-        <section class="panel overview-panel">
-          <div class="metric-grid" id="metrics"></div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Рекомендовані PID</h2>
-              <p class="muted">Стартові значення для rate loop. Остаточно перевіряйте тільки на реальному логу.</p>
+        <section class="dashboard-grid">
+          <section id="build" class="panel controls-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Конструктор сетапу</h2>
+                <p class="muted">Компоненти можна змішувати як завгодно.</p>
+              </div>
             </div>
-            <button id="copyBtn" class="icon-btn" type="button" title="Скопіювати результат">Copy</button>
-          </div>
-          <div id="pidCards" class="pid-grid"></div>
+
+            <section class="control-group">
+              <h3>Рама і геометрія</h3>
+              <div class="grid-2">
+                <label>
+                  <span class="label-row">Клас рами <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Швидкий клас пресета: 5, 7, 10 дюймів або custom. Це не блокує вибір пропів іншого розміру.</span>
+                  <select id="frameClass"></select>
+                </label>
+                <label>
+                  <span class="label-row">Схема моторів <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Quad має 4 мотори, hex 6, octo 8, coax 8 у співвісних парах.</span>
+                  <select id="layout"></select>
+                </label>
+                <label>
+                  <span class="label-row">Pusher-мікс <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Можна зробити всі мотори звичайними, всі pusher або змішати. У схемі дрона нижче клікайте окремі мотори.</span>
+                  <select id="pusherMode"></select>
+                </label>
+                <label>
+                  <span class="label-row">Клас рами / макс. проп, дюйми <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Орієнтир фізичного класу рами: який пропелер зазвичай поміщається без перекриття.</span>
+                  <input id="frameSize" type="number" min="2" max="16" step="0.1" />
+                </label>
+                <label>
+                  <span class="label-row">Плече: центр → мотор, мм <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Відстань від центру мас/контролера до осі мотора. Впливає на момент і інерцію.</span>
+                  <input id="armLength" type="number" min="80" max="520" step="5" />
+                </label>
+                <label>
+                  <span class="label-row">Маса рами, г <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Суха маса рами з електронікою без батареї, моторів, пропів і payload.</span>
+                  <input id="frameMass" type="number" min="80" max="2500" step="10" />
+                </label>
+                <label>
+                  <span class="label-row">Корисне навантаження, г <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Камера, підвіс, кріплення, GPS-обладнання або інший вантаж.</span>
+                  <input id="payloadMass" type="number" min="0" max="2000" step="10" />
+                </label>
+                <label>
+                  <span class="label-row">Розподіл маси <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Наскільки маса винесена до країв. Більше значення означає більшу інерцію й повільнішу реакцію.</span>
+                  <input id="massSpread" type="range" min="0.35" max="0.85" step="0.01" />
+                  <span id="massSpreadValue" class="range-value"></span>
+                </label>
+              </div>
+            </section>
+
+            <section class="control-group">
+              <h3>Мотори, пропи, живлення</h3>
+              <div class="grid-2">
+                <label>
+                  <span class="label-row">KV мотора <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Обертів на вольт без навантаження. Вищий KV швидший, але важче крутить великі пропи.</span>
+                  <input id="motorKv" type="number" min="200" max="4000" step="10" />
+                </label>
+                <label>
+                  <span class="label-row">Статор, мм <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Наприклад 2207 або 2806. Більший об'єм статора дає більше torque authority.</span>
+                  <input id="stator" type="text" inputmode="numeric" />
+                </label>
+                <label>
+                  <span class="label-row">Діаметр пропа, дюйми <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Фактичний діаметр встановленого пропелера, незалежно від класу рами.</span>
+                  <input id="propDiameter" type="number" min="2" max="14" step="0.1" />
+                </label>
+                <label>
+                  <span class="label-row">Крок пропа, дюйми <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Більший pitch дає швидкість і навантаження, але збільшує motor lag і sag.</span>
+                  <input id="propPitch" type="number" min="1" max="8" step="0.1" />
+                </label>
+                <label>
+                  <span class="label-row">Лопатей <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Більше лопатей збільшує grip і навантаження на мотор.</span>
+                  <input id="propBlades" type="number" min="2" max="6" step="1" />
+                </label>
+                <label>
+                  <span class="label-row">Тип акумулятора <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Тип задає nominal voltage і типову просадку. Custom дозволяє грубо моделювати інші хімії.</span>
+                  <select id="batteryType"></select>
+                </label>
+                <label>
+                  <span class="label-row">Кількість елементів <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Для LiPo це S-count, для Li-ion кількість елементів послідовно, для custom - умовні серійні елементи.</span>
+                  <input id="batteryCells" type="number" min="1" max="14" step="1" />
+                </label>
+                <label>
+                  <span class="label-row">Ємність, mAh <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Впливає на масу батареї та її здатність тримати напругу під навантаженням.</span>
+                  <input id="batteryMah" type="number" min="450" max="30000" step="50" />
+                </label>
+                <label>
+                  <span class="label-row">Опір пакета, mOhm <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Внутрішній опір всього акумулятора. Більше значення означає більший voltage sag.</span>
+                  <input id="batteryResistance" type="number" min="4" max="260" step="1" />
+                </label>
+              </div>
+            </section>
+
+            <section class="control-group">
+              <h3>Середовище і затримки</h3>
+              <div class="grid-2">
+                <label>
+                  <span class="label-row">Motor lag, мс <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Затримка мотор+проп+ESC до зміни тяги. Великі пропи й важкі мотори зазвичай повільніші.</span>
+                  <input id="motorLag" type="number" min="4" max="80" step="1" />
+                </label>
+                <label>
+                  <span class="label-row">Фільтрація гіроскопа <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Легка дає меншу затримку, але більше шуму D-term. Важка тихіша, але повільніша.</span>
+                  <select id="filtering"></select>
+                </label>
+                <label>
+                  <span class="label-row">Шум гіроскопа <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Оцінка вібрацій і електричного шуму. Високий шум підвищує ризик перегріву від D.</span>
+                  <input id="noise" type="range" min="0" max="1" step="0.01" />
+                  <span id="noiseValue" class="range-value"></span>
+                </label>
+                <label>
+                  <span class="label-row">Вітер / збурення <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Повільні зовнішні моменти: вітер, проп wash, зміщений центр мас.</span>
+                  <input id="wind" type="range" min="0" max="1" step="0.01" />
+                  <span id="windValue" class="range-value"></span>
+                </label>
+                <label>
+                  <span class="label-row">Стиль польоту <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Спокійний стиль шукає м'якшу відповідь, агресивний - швидший rise time із більшим ризиком.</span>
+                  <input id="style" type="range" min="0" max="1" step="0.01" />
+                  <span id="styleValue" class="range-value"></span>
+                </label>
+                <label>
+                  <span class="label-row">Цільовий rate, °/с <button class="help" type="button" aria-label="Пояснення">?</button></span>
+                  <span class="tip">Командна швидкість обертання для step-response симуляції rate PID.</span>
+                  <input id="targetRate" type="number" min="120" max="900" step="10" />
+                </label>
+              </div>
+            </section>
+          </section>
+
+          <section class="right-column">
+            <section id="drone" class="panel drone-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Візуальна схема</h2>
+                  <p class="muted">Клік по мотору перемикає standard / pusher.</p>
+                </div>
+                <div id="droneStatus" class="status-pill">Quad</div>
+              </div>
+              <div class="drone-stage">
+                <div id="droneVisual" class="drone-visual" aria-label="Схема моторів"></div>
+              </div>
+              <div class="motor-legend">
+                <span><i class="standard-dot"></i> Standard</span>
+                <span><i class="pusher-dot"></i> Pusher</span>
+                <span><i class="coax-dot"></i> Coax pair</span>
+              </div>
+            </section>
+
+            <section class="panel overview-panel">
+              <div id="metrics" class="metric-grid"></div>
+            </section>
+          </section>
         </section>
 
-        <section class="panel chart-panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Відповідь rate PID</h2>
-              <p class="muted">Команда step, motor lag, шум, вітер, saturation і sag враховані в дискретній моделі.</p>
+        <section id="pid" class="pid-layout">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Рекомендовані PID</h2>
+                <p class="muted">Стартові значення для rate loop.</p>
+              </div>
+              <button id="copyBtn" class="icon-btn" type="button" title="Скопіювати результат">Copy</button>
             </div>
-            <div class="tabs" role="tablist" aria-label="Вісь графіка">
-              <button class="tab active" data-axis="roll" type="button">Roll</button>
-              <button class="tab" data-axis="pitch" type="button">Pitch</button>
-              <button class="tab" data-axis="yaw" type="button">Yaw</button>
+            <div id="pidCards" class="pid-grid"></div>
+          </section>
+
+          <section class="panel chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Відповідь rate PID</h2>
+                <p class="muted">Step command із lag, sag, шумом, вітром і saturation.</p>
+              </div>
+              <div class="tabs" role="tablist" aria-label="Вісь графіка">
+                <button class="tab active" data-axis="roll" type="button">Roll</button>
+                <button class="tab" data-axis="pitch" type="button">Pitch</button>
+                <button class="tab" data-axis="yaw" type="button">Yaw</button>
+              </div>
             </div>
-          </div>
-          <canvas id="responseChart" width="1100" height="390" aria-label="Графік відповіді"></canvas>
-          <div id="chartLegend" class="legend"></div>
+            <canvas id="responseChart" width="1100" height="390" aria-label="Графік відповіді"></canvas>
+            <div id="chartLegend" class="legend"></div>
+          </section>
         </section>
 
         <section class="split-row">
@@ -178,13 +240,53 @@
             <div id="modelNotes" class="model-notes"></div>
           </section>
         </section>
-      </section>
-    </main>
 
-    <footer class="safety-strip">
-      <strong>Безпека:</strong> знімайте пропелери для bench-тестів, починайте з консервативних значень,
-      перевіряйте температуру моторів, failsafe і blackbox-логи.
-    </footer>
+        <section id="settings" class="panel settings-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Налаштування</h2>
+              <p class="muted">Інтерфейс, вигляд і поведінка локального додатка.</p>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <label>
+              <span class="label-row">Мова <button class="help" type="button" aria-label="Пояснення">?</button></span>
+              <span class="tip">Українська зараз основна. English вмикає англомовні технічні підписи там, де вони природні.</span>
+              <select id="language">
+                <option value="uk">Українська</option>
+                <option value="en">English labels</option>
+              </select>
+            </label>
+            <label>
+              <span class="label-row">Тема <button class="help" type="button" aria-label="Пояснення">?</button></span>
+              <span class="tip">Світла, темна або контрастна тема для майстерні/поля.</span>
+              <select id="theme">
+                <option value="light">Світла</option>
+                <option value="dark">Темна</option>
+                <option value="contrast">Контрастна</option>
+              </select>
+            </label>
+            <label>
+              <span class="label-row">Одиниці <button class="help" type="button" aria-label="Пояснення">?</button></span>
+              <span class="tip">Зараз розрахунки метричні, але цей параметр готує UI до imperial-перерахунків.</span>
+              <select id="units">
+                <option value="metric">Metric</option>
+                <option value="imperial">Imperial display</option>
+              </select>
+            </label>
+            <label class="toggle-row">
+              <input id="compactMode" type="checkbox" />
+              <span>Компактні панелі</span>
+            </label>
+          </div>
+        </section>
+
+        <footer class="safety-strip">
+          <strong>Безпека:</strong> знімайте пропелери для bench-тестів, починайте з консервативних значень,
+          перевіряйте температуру моторів, failsafe і blackbox-логи.
+        </footer>
+      </main>
+    </div>
 
     <script src="app.js"></script>
   </body>

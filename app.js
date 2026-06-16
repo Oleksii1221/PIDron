@@ -5,7 +5,8 @@ const presets = {
     label: '5" freestyle / racing',
     frameClass: "5",
     layout: "quad",
-    pusher: "no",
+    pusherMode: "all-standard",
+    batteryType: "lipo",
     frameSize: 5,
     armLength: 162,
     frameMass: 390,
@@ -30,7 +31,8 @@ const presets = {
     label: '7" long range',
     frameClass: "7",
     layout: "quad",
-    pusher: "no",
+    pusherMode: "all-standard",
+    batteryType: "liion",
     frameSize: 7,
     armLength: 240,
     frameMass: 780,
@@ -55,7 +57,8 @@ const presets = {
     label: '10" heavy lift',
     frameClass: "10",
     layout: "octo",
-    pusher: "no",
+    pusherMode: "all-standard",
+    batteryType: "lipo",
     frameSize: 10,
     armLength: 360,
     frameMass: 1850,
@@ -80,7 +83,8 @@ const presets = {
     label: "Custom coax pusher",
     frameClass: "custom",
     layout: "coax",
-    pusher: "yes",
+    pusherMode: "mixed",
+    batteryType: "lihv",
     frameSize: 8,
     armLength: 275,
     frameMass: 1100,
@@ -116,9 +120,17 @@ const options = {
     ["octo", "Octo"],
     ["coax", "Coax"]
   ],
-  pusher: [
-    ["no", "Non-pusher"],
-    ["yes", "Pusher"]
+  pusherMode: [
+    ["all-standard", "Усі standard"],
+    ["all-pusher", "Усі pusher"],
+    ["mixed", "Змішано"]
+  ],
+  batteryType: [
+    ["lipo", "LiPo"],
+    ["lihv", "LiHV"],
+    ["liion", "Li-ion"],
+    ["lifepo", "LiFePO4"],
+    ["custom", "Custom"]
   ],
   filtering: [
     ["light", "Легка"],
@@ -132,7 +144,7 @@ const axisLabels = { roll: "Roll", pitch: "Pitch", yaw: "Yaw" };
 const ids = [
   "frameClass",
   "layout",
-  "pusher",
+  "pusherMode",
   "frameSize",
   "armLength",
   "frameMass",
@@ -143,6 +155,7 @@ const ids = [
   "propDiameter",
   "propPitch",
   "propBlades",
+  "batteryType",
   "batteryCells",
   "batteryMah",
   "batteryResistance",
@@ -160,7 +173,8 @@ const state = {
   optimized: null,
   simulations: null,
   physics: null,
-  warnings: []
+  warnings: [],
+  pusherMotors: []
 };
 
 const el = {};
@@ -178,9 +192,15 @@ function init() {
   el.modelNotes = document.getElementById("modelNotes");
   el.responseChart = document.getElementById("responseChart");
   el.chartLegend = document.getElementById("chartLegend");
+  el.droneVisual = document.getElementById("droneVisual");
+  el.droneStatus = document.getElementById("droneStatus");
   el.optimizeBtn = document.getElementById("optimizeBtn");
   el.simulateBtn = document.getElementById("simulateBtn");
   el.copyBtn = document.getElementById("copyBtn");
+  el.language = document.getElementById("language");
+  el.theme = document.getElementById("theme");
+  el.units = document.getElementById("units");
+  el.compactMode = document.getElementById("compactMode");
   el.massSpreadValue = document.getElementById("massSpreadValue");
   el.noiseValue = document.getElementById("noiseValue");
   el.windValue = document.getElementById("windValue");
@@ -220,6 +240,14 @@ function bindEvents() {
   el.optimizeBtn.addEventListener("click", () => runAll(true));
   el.simulateBtn.addEventListener("click", () => runAll(false));
   el.copyBtn.addEventListener("click", copyResult);
+  el.theme.addEventListener("change", () => {
+    document.body.dataset.theme = el.theme.value;
+  });
+  el.compactMode.addEventListener("change", () => {
+    document.body.classList.toggle("compact", el.compactMode.checked);
+  });
+  el.language.addEventListener("change", render);
+  el.units.addEventListener("change", renderMetrics);
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeAxis = button.dataset.axis;
@@ -231,6 +259,7 @@ function bindEvents() {
 
 function applyPreset(key) {
   state.config = { ...presets[key] };
+  state.pusherMotors = makePusherMotors(state.config);
   el.presetSelect.value = key;
   writeInputsFromConfig();
   runAll(true);
@@ -246,12 +275,18 @@ function writeInputsFromConfig() {
 function readConfigFromInputs() {
   const next = {};
   ids.forEach((id) => {
-    if (["frameClass", "layout", "pusher", "filtering", "stator"].includes(id)) {
+    if (["frameClass", "layout", "pusherMode", "batteryType", "filtering", "stator"].includes(id)) {
       next[id] = el[id].value;
     } else {
       next[id] = Number(el[id].value);
     }
   });
+  const count = motorCountFor(next.layout);
+  if (next.layout !== state.config.layout || next.pusherMode !== state.config.pusherMode) {
+    state.pusherMotors = makePusherMotors(next);
+  } else if (state.pusherMotors.length !== count) {
+    state.pusherMotors = resizePusherMotors(state.pusherMotors, count);
+  }
   state.config = next;
   updateRangeLabels();
 }
@@ -289,14 +324,17 @@ function runAll(optimize) {
 function estimatePhysics(config) {
   const motorCount = motorCountFor(config.layout);
   const coaxLoss = config.layout === "coax" ? 0.86 : 1;
-  const pusherLoss = config.pusher === "yes" ? 0.95 : 1;
+  const pusherRatio =
+    state.pusherMotors.length > 0 ? state.pusherMotors.filter(Boolean).length / state.pusherMotors.length : 0;
+  const pusherLoss = 1 - pusherRatio * 0.05;
   const stator = parseStator(config.stator);
-  const batteryMass = 0.095 + config.batteryMah * config.batteryCells * 0.0000115;
+  const battery = batteryProfile(config.batteryType);
+  const batteryMass = battery.baseMass + config.batteryMah * config.batteryCells * battery.massFactor;
   const motorMass = motorCount * (0.014 + stator.volume * 0.0000026);
   const propMass = motorCount * (0.004 + Math.pow(config.propDiameter, 2.25) * config.propBlades * 0.00011);
   const allUpMassKg =
     (config.frameMass + config.payloadMass) / 1000 + batteryMass + motorMass + propMass;
-  const voltageNominal = config.batteryCells * 3.75;
+  const voltageNominal = config.batteryCells * battery.nominalVoltage;
   const rpmNoLoad = config.motorKv * voltageNominal;
   const propLoad = Math.pow(config.propDiameter, 4) * config.propPitch * (1 + (config.propBlades - 2) * 0.18);
   const kvTorqueFit = clamp((stator.volume / 1100) * (1800 / Math.max(config.motorKv, 1)), 0.38, 2.15);
@@ -338,10 +376,10 @@ function estimatePhysics(config) {
     Math.pow(config.propDiameter, 2.2) *
     config.propPitch *
     config.motorKv *
-    0.00015 *
-    clamp(hoverThrottle + 0.28 + config.style * 0.12, 0.36, 0.82);
+      battery.currentFactor *
+      clamp(hoverThrottle + 0.28 + config.style * 0.12, 0.36, 0.82);
   const sagV = (currentEstimate * (config.batteryResistance / 1000)) / Math.max(config.batteryCells, 1);
-  const sagRatio = clamp(sagV / 3.75, 0, 0.32);
+  const sagRatio = clamp(sagV / battery.nominalVoltage, 0, 0.32);
   const discLoading = weightN / (motorCount * Math.PI * Math.pow((config.propDiameter * 0.0254) / 2, 2));
   const filterDelayMs = { light: 4, medium: 8, heavy: 14 }[config.filtering];
   const responseLagMs = config.motorLag + filterDelayMs + sagRatio * 35 + config.propDiameter * 1.4;
@@ -364,8 +402,22 @@ function estimatePhysics(config) {
     discLoading,
     responseLagMs,
     propLoad,
-    loadLimit
+    loadLimit,
+    pusherRatio,
+    battery
   };
+}
+
+function batteryProfile(type) {
+  return (
+    {
+      lipo: { label: "LiPo", nominalVoltage: 3.75, baseMass: 0.095, massFactor: 0.0000115, currentFactor: 0.00015 },
+      lihv: { label: "LiHV", nominalVoltage: 3.85, baseMass: 0.098, massFactor: 0.0000118, currentFactor: 0.000145 },
+      liion: { label: "Li-ion", nominalVoltage: 3.6, baseMass: 0.12, massFactor: 0.0000148, currentFactor: 0.00018 },
+      lifepo: { label: "LiFePO4", nominalVoltage: 3.2, baseMass: 0.13, massFactor: 0.000016, currentFactor: 0.00017 },
+      custom: { label: "Custom", nominalVoltage: 3.7, baseMass: 0.11, massFactor: 0.000013, currentFactor: 0.00016 }
+    }[type] || { label: "Custom", nominalVoltage: 3.7, baseMass: 0.11, massFactor: 0.000013, currentFactor: 0.00016 }
+  );
 }
 
 function parseStator(raw) {
@@ -378,6 +430,29 @@ function parseStator(raw) {
 
 function motorCountFor(layout) {
   return { quad: 4, hex: 6, octo: 8, coax: 8 }[layout] || 4;
+}
+
+function makePusherMotors(config) {
+  const count = motorCountFor(config.layout);
+  if (config.pusherMode === "all-pusher") return Array(count).fill(true);
+  if (config.pusherMode === "mixed") {
+    return Array.from({ length: count }, (_, index) =>
+      config.layout === "coax" ? index % 2 === 1 : index >= Math.floor(count / 2)
+    );
+  }
+  return Array(count).fill(false);
+}
+
+function resizePusherMotors(current, count) {
+  return Array.from({ length: count }, (_, index) => Boolean(current[index]));
+}
+
+function syncPusherModeFromMotors() {
+  const count = state.pusherMotors.length;
+  const pusherCount = state.pusherMotors.filter(Boolean).length;
+  const mode = pusherCount === 0 ? "all-standard" : pusherCount === count ? "all-pusher" : "mixed";
+  state.config.pusherMode = mode;
+  el.pusherMode.value = mode;
 }
 
 function optimizePid(config, physics) {
@@ -602,6 +677,13 @@ function buildWarnings(config, physics) {
       text: "Модель враховує втрату тяги у стеку пропів і трохи кращий yaw authority, але реальні відстані між пропами важливі."
     });
   }
+  if (physics.pusherRatio > 0 && physics.pusherRatio < 1) {
+    warnings.push({
+      level: "low",
+      title: "Змішана pusher-схема",
+      text: `${format(physics.pusherRatio * 100, 0)}% моторів pusher: перевірте напрямки пропів, обдув рами й можливе зміщення yaw/roll coupling.`
+    });
+  }
   if (!warnings.length) {
     warnings.push({
       level: "low",
@@ -613,11 +695,56 @@ function buildWarnings(config, physics) {
 }
 
 function render() {
+  renderDrone();
   renderMetrics();
   renderPidCards();
   renderWarnings();
   renderModelNotes();
   drawChart();
+}
+
+function renderDrone() {
+  const count = motorCountFor(state.config.layout);
+  if (state.pusherMotors.length !== count) {
+    state.pusherMotors = resizePusherMotors(state.pusherMotors, count);
+  }
+  const radius = 39;
+  const start = state.config.layout === "quad" ? -45 : -90;
+  const arms = [];
+  const motors = [];
+  for (let index = 0; index < count; index += 1) {
+    const angle = start + (360 / count) * index;
+    const rad = (angle * Math.PI) / 180;
+    const x = 50 + Math.cos(rad) * radius;
+    const y = 50 + Math.sin(rad) * radius;
+    const isPusher = Boolean(state.pusherMotors[index]);
+    const isCoax = state.config.layout === "coax";
+    arms.push(`<span class="arm" style="transform: rotate(${angle}deg)"></span>`);
+    motors.push(`
+      <button
+        class="motor-node ${isPusher ? "pusher" : ""} ${isCoax ? "coax" : ""}"
+        type="button"
+        data-motor="${index}"
+        style="left:${x}%; top:${y}%"
+        title="M${index + 1}: ${isPusher ? "pusher" : "standard"}"
+      >
+        M${index + 1}<small>${isPusher ? "push" : "std"}</small>
+      </button>`);
+  }
+  el.droneVisual.innerHTML = `
+    ${arms.join("")}
+    <div class="drone-hub">${state.config.layout.toUpperCase()}</div>
+    ${motors.join("")}`;
+  el.droneVisual.querySelectorAll(".motor-node").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.motor);
+      state.pusherMotors[index] = !state.pusherMotors[index];
+      syncPusherModeFromMotors();
+      runAll(true);
+    });
+  });
+  const pusherCount = state.pusherMotors.filter(Boolean).length;
+  el.droneStatus.textContent = `${state.config.layout.toUpperCase()} · ${pusherCount}/${count} pusher`;
 }
 
 function renderMetrics() {
@@ -626,11 +753,19 @@ function renderMetrics() {
     ["Маса AUW", `${format(physics.allUpMassKg * 1000, 0)} г`, "рама, батарея, мотори, пропи, payload"],
     ["Тяга / вага", `${format(physics.thrustToWeight, 2)}x`, `${format(physics.maxThrustN / 9.81, 2)} кг сумарної тяги`],
     ["Hover throttle", `${format(physics.hoverThrottle * 100, 0)}%`, "нижче краще для control authority"],
-    ["Battery sag", `${format(physics.sagRatio * 100, 0)}%`, `${format(physics.voltageNominal, 1)} В nominal`],
+    [
+      "Battery sag",
+      `${format(physics.sagRatio * 100, 0)}%`,
+      `${physics.battery.label}, ${format(physics.voltageNominal, 1)} В nominal`
+    ],
     ["Motor lag + filter", `${format(physics.responseLagMs, 0)} мс`, "мотор, фільтр, sag, інерція пропа"],
     ["Disc loading", `${format(physics.discLoading, 1)} Н/м²`, "оцінка навантаження на пропи"],
     ["Loaded RPM", `${format(physics.loadedRpm, 0)}`, "KV, напруга і prop loading"],
-    ["Моторів", `${physics.motorCount}`, state.config.layout.toUpperCase()]
+    [
+      "Моторів",
+      `${physics.motorCount}`,
+      `${state.config.layout.toUpperCase()}, pusher ${format(physics.pusherRatio * 100, 0)}%`
+    ]
   ];
   el.metrics.innerHTML = metrics
     .map(
@@ -683,7 +818,10 @@ function renderModelNotes() {
   const notes = [
     [
       "Тяга",
-      `Оцінка бере KV, nominal voltage, діаметр/крок/лопаті пропа, stator volume, втрату coax/pusher і prop loading.`
+      `Оцінка бере KV, ${physics.battery.label} nominal voltage, діаметр/крок/лопаті пропа, stator volume, ${format(
+        physics.pusherRatio * 100,
+        0
+      )}% pusher-моторів, втрату coax і prop loading.`
     ],
     [
       "Інерція",
@@ -721,11 +859,19 @@ function drawChart() {
   const sim = state.simulations?.[state.activeAxis];
   if (!sim) return;
 
+  const css = getComputedStyle(document.body);
+  const surface = css.getPropertyValue("--surface").trim() || "#fbfcfb";
+  const line = css.getPropertyValue("--line").trim() || "#d8dfda";
+  const ink = css.getPropertyValue("--ink").trim() || "#1b2220";
+  const muted = css.getPropertyValue("--muted").trim() || "#63706b";
+  const accent = css.getPropertyValue("--accent").trim() || "#176b5b";
+  const amber = css.getPropertyValue("--amber").trim() || "#a66200";
+  const red = css.getPropertyValue("--red").trim() || "#a12b2b";
   const width = canvas.width;
   const height = canvas.height;
   const pad = { left: 54, right: 24, top: 24, bottom: 42 };
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#fbfcfb";
+  ctx.fillStyle = surface;
   ctx.fillRect(0, 0, width, height);
 
   const maxY = Math.max(...sim.points.map((p) => Math.max(p.target, p.rate)), state.config.targetRate) * 1.15;
@@ -735,9 +881,9 @@ function drawChart() {
   const x = (t) => pad.left + (t / 1.6) * plotW;
   const y = (value) => pad.top + (1 - (value - minY) / (maxY - minY)) * plotH;
 
-  ctx.strokeStyle = "#d8dfda";
+  ctx.strokeStyle = line;
   ctx.lineWidth = 1;
-  ctx.fillStyle = "#63706b";
+  ctx.fillStyle = muted;
   ctx.font = "13px Inter, sans-serif";
   for (let i = 0; i <= 5; i += 1) {
     const gy = pad.top + (plotH / 5) * i;
@@ -758,23 +904,23 @@ function drawChart() {
   }
 
   drawSeries(ctx, sim.points, (p) => x(p.t), (p) => y(p.target), "#2563a9", 2, [8, 6]);
-  drawSeries(ctx, sim.points, (p) => x(p.t), (p) => y(p.rate), "#176b5b", 3);
+  drawSeries(ctx, sim.points, (p) => x(p.t), (p) => y(p.rate), accent, 3);
   drawSeries(
     ctx,
     sim.points,
     (p) => x(p.t),
     (p) => pad.top + plotH - ((p.motor + 100) / 200) * plotH,
-    "#a66200",
+    amber,
     1.5
   );
   sim.points
     .filter((p) => p.saturation)
     .forEach((p) => {
-      ctx.fillStyle = "rgba(161, 43, 43, 0.18)";
+      ctx.fillStyle = redWithAlpha(red, 0.18);
       ctx.fillRect(x(p.t), pad.top, 3, plotH);
     });
 
-  ctx.fillStyle = "#1b2220";
+  ctx.fillStyle = ink;
   ctx.font = "700 14px Inter, sans-serif";
   ctx.fillText(`${axisLabels[state.activeAxis]} rate, град/с`, pad.left, 18);
   el.chartLegend.innerHTML = `
@@ -811,7 +957,7 @@ async function copyResult() {
   const text = `PIDron\n${lines.join("\n")}\nTWR ${format(state.physics.thrustToWeight, 2)}x, hover ${format(
     state.physics.hoverThrottle * 100,
     0
-  )}%`;
+  )}%, ${state.physics.battery.label}, pusher ${format(state.physics.pusherRatio * 100, 0)}%`;
   try {
     await navigator.clipboard.writeText(text);
     el.copyBtn.textContent = "Copied";
@@ -853,4 +999,14 @@ function format(value, digits) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits
   });
+}
+
+function redWithAlpha(color, alpha) {
+  if (color.startsWith("#") && color.length === 7) {
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return `rgba(161, 43, 43, ${alpha})`;
 }
