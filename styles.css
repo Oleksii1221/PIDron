@@ -315,9 +315,8 @@ label {
   line-height: 1.35;
 }
 
-.help:hover + .tip,
-.label-row:hover + .tip,
-label:focus-within .tip {
+.label-row:has(.help:hover) + .tip,
+.label-row:has(.help:focus-visible) + .tip {
   opacity: 1;
   transform: translateY(0);
 }
