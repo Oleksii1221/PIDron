@@ -185,6 +185,7 @@ const state = {
   activePresetKey: "5-race",
   pickmeClicks: 0,
   pickmeTimer: null,
+  fcPort: null,
   settings: {
     language: "uk",
     theme: "light",
@@ -219,6 +220,24 @@ function init() {
   el.presetNameInput = document.getElementById("presetNameInput");
   el.presetStatus = document.getElementById("presetStatus");
   el.kicoUnlock = document.getElementById("kicoUnlock");
+  el.openSettingsBtn = document.getElementById("openSettingsBtn");
+  el.openFlightBtn = document.getElementById("openFlightBtn");
+  el.openAnalysisBtn = document.getElementById("openAnalysisBtn");
+  el.settingsWindow = document.getElementById("settingsWindow");
+  el.flightWindow = document.getElementById("flightWindow");
+  el.analysisWindow = document.getElementById("analysisWindow");
+  el.firmwareType = document.getElementById("firmwareType");
+  el.baudRate = document.getElementById("baudRate");
+  el.connectFcBtn = document.getElementById("connectFcBtn");
+  el.writeSafety = document.getElementById("writeSafety");
+  el.generateCliBtn = document.getElementById("generateCliBtn");
+  el.copyCliBtn = document.getElementById("copyCliBtn");
+  el.writeFcBtn = document.getElementById("writeFcBtn");
+  el.fcStatus = document.getElementById("fcStatus");
+  el.fcCommandOutput = document.getElementById("fcCommandOutput");
+  el.blackboxFile = document.getElementById("blackboxFile");
+  el.analyzeLogBtn = document.getElementById("analyzeLogBtn");
+  el.analysisReport = document.getElementById("analysisReport");
   el.language = document.getElementById("language");
   el.theme = document.getElementById("theme");
   el.units = document.getElementById("units");
@@ -288,6 +307,26 @@ function bindEvents() {
   el.savePresetBtn.addEventListener("click", saveCurrentPreset);
   el.deletePresetBtn.addEventListener("click", deleteCurrentPreset);
   el.kicoUnlock.addEventListener("click", handleKicoClick);
+  el.openSettingsBtn.addEventListener("click", () => openWindow("settingsWindow"));
+  el.openFlightBtn.addEventListener("click", () => {
+    openWindow("flightWindow");
+    generateFlightControllerCommands();
+  });
+  el.openAnalysisBtn.addEventListener("click", () => openWindow("analysisWindow"));
+  document.querySelectorAll("[data-close-window]").forEach((button) => {
+    button.addEventListener("click", () => closeWindow(button.dataset.closeWindow));
+  });
+  document.querySelectorAll(".app-window").forEach((windowEl) => {
+    windowEl.addEventListener("click", (event) => {
+      if (event.target === windowEl) closeWindow(windowEl.id);
+    });
+  });
+  wireHelpTooltips();
+  el.generateCliBtn.addEventListener("click", generateFlightControllerCommands);
+  el.copyCliBtn.addEventListener("click", copyFlightControllerCommands);
+  el.connectFcBtn.addEventListener("click", connectFlightController);
+  el.writeFcBtn.addEventListener("click", writeFlightControllerCommands);
+  el.analyzeLogBtn.addEventListener("click", analyzeBlackboxFile);
   el.theme.addEventListener("change", () => {
     state.settings.theme = el.theme.value;
     applyStoredSettings();
@@ -314,6 +353,27 @@ function bindEvents() {
       document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab === button));
       drawChart();
     });
+  });
+}
+
+function openWindow(id) {
+  el[id].classList.remove("hidden");
+}
+
+function closeWindow(id) {
+  el[id].classList.add("hidden");
+}
+
+function wireHelpTooltips() {
+  document.querySelectorAll(".help").forEach((button) => {
+    const tip = button.closest("label")?.querySelector(".tip");
+    if (!tip) return;
+    const show = () => tip.classList.add("is-visible");
+    const hide = () => tip.classList.remove("is-visible");
+    button.addEventListener("mouseenter", show);
+    button.addEventListener("mouseleave", hide);
+    button.addEventListener("focus", show);
+    button.addEventListener("blur", hide);
   });
 }
 
@@ -444,7 +504,7 @@ function loadStoredState() {
 
 function applyStoredSettings() {
   ensurePickmeThemeOption();
-  if (state.settings.theme === "pickme" && !state.settings.pickmeUnlocked) {
+  if (state.settings.theme.startsWith("pickme") && !state.settings.pickmeUnlocked) {
     state.settings.theme = "light";
   }
   el.language.value = state.settings.language || "uk";
@@ -453,6 +513,7 @@ function applyStoredSettings() {
   el.compactMode.checked = Boolean(state.settings.compactMode);
   document.body.dataset.theme = el.theme.value;
   document.body.classList.toggle("compact", el.compactMode.checked);
+  renderDrone();
   drawChart();
 }
 
@@ -474,11 +535,17 @@ function readJson(key, fallback) {
 }
 
 function ensurePickmeThemeOption() {
-  if (!state.settings.pickmeUnlocked || [...el.theme.options].some((option) => option.value === "pickme")) return;
-  const option = document.createElement("option");
-  option.value = "pickme";
-  option.textContent = "Пікмі";
-  el.theme.append(option);
+  if (!state.settings.pickmeUnlocked) return;
+  [
+    ["pickme", "Пікмі"],
+    ["pickme-dark", "Пікмі темна"]
+  ].forEach(([value, label]) => {
+    if ([...el.theme.options].some((option) => option.value === value)) return;
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    el.theme.append(option);
+  });
 }
 
 function handleKicoClick() {
@@ -525,6 +592,7 @@ function runAll(optimize) {
     state.optimized[axis].metrics = state.simulations[axis].metrics;
   });
   render();
+  generateFlightControllerCommands();
 }
 
 function estimatePhysics(config) {
@@ -951,6 +1019,14 @@ function renderDrone() {
   });
   const pusherCount = state.pusherMotors.filter(Boolean).length;
   el.droneStatus.textContent = `${state.config.layout.toUpperCase()} · ${pusherCount}/${count} pusher`;
+  const detail = {
+    layout: state.config.layout,
+    armLength: state.config.armLength,
+    propDiameter: state.config.propDiameter,
+    pusherMotors: [...state.pusherMotors]
+  };
+  window.pidronCurrentDrone = detail;
+  window.dispatchEvent(new CustomEvent("pidron:drone-change", { detail }));
 }
 
 function renderMetrics() {
@@ -1057,6 +1133,169 @@ function renderModelNotes() {
         </article>`
     )
     .join("");
+}
+
+function generateFlightControllerCommands() {
+  if (!state.optimized || !el.fcCommandOutput) return;
+  const firmware = el.firmwareType?.value || "betaflight";
+  const lines = firmware === "ardupilot" ? ardupilotParams() : cliCommands(firmware);
+  el.fcCommandOutput.value = lines.join("\n");
+  if (el.fcStatus && !state.fcPort) {
+    el.fcStatus.textContent = "Команди готові";
+  }
+}
+
+function cliCommands(firmware) {
+  const prefix = firmware === "inav" ? "mc_" : "";
+  const scalePid = (value) => Math.round(clamp(value * 52, 1, 180));
+  const scaleD = (value) => Math.round(clamp(value * 44, 0, 160));
+  const scaleF = (value) => Math.round(clamp(value * 110, 0, 220));
+  return [
+    "# PIDron generated values",
+    "# Перевірити без пропів. Не шити сліпо.",
+    "profile 0",
+    ...axes.flatMap((axis) => {
+      const pid = state.optimized[axis].pid;
+      return [
+        `set ${prefix}${axis}_p = ${scalePid(pid.p)}`,
+        `set ${prefix}${axis}_i = ${scalePid(pid.i)}`,
+        `set ${prefix}${axis}_d = ${scaleD(pid.d)}`,
+        `set ${prefix}${axis}_f = ${scaleF(pid.ff)}`
+      ];
+    }),
+    "save"
+  ];
+}
+
+function ardupilotParams() {
+  const map = { roll: "RLL", pitch: "PIT", yaw: "YAW" };
+  return [
+    "# PIDron generated ArduPilot params",
+    "# Перевірити без пропів. Значення є стартовими.",
+    ...axes.flatMap((axis) => {
+      const pid = state.optimized[axis].pid;
+      const prefix = `ATC_RAT_${map[axis]}`;
+      return [
+        `${prefix}_P ${formatParam(pid.p * 0.11)}`,
+        `${prefix}_I ${formatParam(pid.i * 0.09)}`,
+        `${prefix}_D ${formatParam(pid.d * 0.004)}`,
+        `${prefix}_FF ${formatParam(pid.ff * 0.08)}`
+      ];
+    })
+  ];
+}
+
+function formatParam(value) {
+  return Number(value).toFixed(4);
+}
+
+async function copyFlightControllerCommands() {
+  const text = el.fcCommandOutput.value.trim();
+  if (!text) return;
+  if (window.pidronDesktop?.writeClipboard) {
+    window.pidronDesktop.writeClipboard(text);
+  } else {
+    await navigator.clipboard.writeText(text);
+  }
+  el.fcStatus.textContent = "Скопійовано";
+}
+
+async function connectFlightController() {
+  if (!navigator.serial) {
+    el.fcStatus.textContent = "Web Serial недоступний у цьому режимі";
+    return;
+  }
+  try {
+    state.fcPort = await navigator.serial.requestPort();
+    await state.fcPort.open({ baudRate: Number(el.baudRate.value) });
+    el.fcStatus.textContent = "Підключено";
+  } catch (error) {
+    el.fcStatus.textContent = `Не підключено: ${error.message}`;
+  }
+}
+
+async function writeFlightControllerCommands() {
+  if (!el.writeSafety.checked) {
+    el.fcStatus.textContent = "Спершу увімкни safety checkbox";
+    return;
+  }
+  if (!state.fcPort?.writable) {
+    el.fcStatus.textContent = "Немає активного serial-порту";
+    return;
+  }
+  const writer = state.fcPort.writable.getWriter();
+  try {
+    const payload = new TextEncoder().encode(`${el.fcCommandOutput.value}\n`);
+    await writer.write(payload);
+    el.fcStatus.textContent = "Команди відправлено";
+  } catch (error) {
+    el.fcStatus.textContent = `Помилка запису: ${error.message}`;
+  } finally {
+    writer.releaseLock();
+  }
+}
+
+async function analyzeBlackboxFile() {
+  const file = el.blackboxFile.files?.[0];
+  if (!file) {
+    el.analysisReport.textContent = "Спершу вибери CSV/TXT/BBL файл.";
+    return;
+  }
+  const text = await file.text();
+  const report = analyzeLogText(text);
+  el.analysisReport.textContent = report;
+}
+
+function analyzeLogText(text) {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim()).slice(0, 12000);
+  if (lines.length < 4) return "Лог занадто короткий для аналізу.";
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = lines[0].split(delimiter).map((item) => item.trim().toLowerCase());
+  const rows = lines
+    .slice(1)
+    .map((line) => line.split(delimiter).map((item) => Number(String(item).replace(",", "."))))
+    .filter((row) => row.some(Number.isFinite));
+  const setpointIndex = findColumn(headers, ["setpoint", "rccommand", "axisp", "desired"]);
+  const gyroIndex = findColumn(headers, ["gyro", "gyroadc", "rate", "actual"]);
+  const motorIndex = findColumn(headers, ["motor", "motor[", "esc"]);
+  const values = (index) => (index >= 0 ? rows.map((row) => row[index]).filter(Number.isFinite) : []);
+  const gyro = values(gyroIndex);
+  const setpoint = values(setpointIndex);
+  const motor = values(motorIndex);
+  const trackingError =
+    gyro.length && setpoint.length
+      ? average(gyro.slice(0, setpoint.length).map((value, index) => Math.abs(setpoint[index] - value)))
+      : null;
+  const noise = gyro.length > 4 ? standardDeviation(gyro.slice(1).map((value, index) => value - gyro[index])) : null;
+  const saturation =
+    motor.length > 0 ? motor.filter((value) => value > 1900 || value < 1050 || value > 0.95).length / motor.length : null;
+  const advice = [];
+  if (trackingError !== null && trackingError > 90) advice.push("tracking error високий: трохи підняти P або feedforward.");
+  if (noise !== null && noise > 55) advice.push("шум високий: зменшити D або посилити фільтрацію.");
+  if (saturation !== null && saturation > 0.08) advice.push("є saturation: зменшити агресивність PID або перевірити запас тяги.");
+  if (!advice.length) advice.push("лог виглядає відносно спокійно; робити малі кроки й перевіряти motor temp.");
+  return [
+    `Файл: ${el.blackboxFile.files[0].name}`,
+    `Рядків проаналізовано: ${rows.length}`,
+    `Tracking error: ${trackingError === null ? "немає колонок setpoint/gyro" : format(trackingError, 1)}`,
+    `Noise score: ${noise === null ? "немає gyro" : format(noise, 1)}`,
+    `Saturation: ${saturation === null ? "немає motor" : `${format(saturation * 100, 1)}%`}`,
+    "",
+    "Рекомендації:",
+    ...advice.map((item) => `- ${item}`),
+    "",
+    "MVP-аналіз: для точного автотюну краще додати повний Blackbox parser із фазовою затримкою та FFT."
+  ].join("\n");
+}
+
+function detectDelimiter(line) {
+  if (line.includes("\t")) return "\t";
+  if (line.includes(";")) return ";";
+  return ",";
+}
+
+function findColumn(headers, needles) {
+  return headers.findIndex((header) => needles.some((needle) => header.includes(needle)));
 }
 
 function drawChart() {
@@ -1198,6 +1437,10 @@ function average(values) {
 function variance(values) {
   const mean = average(values);
   return average(values.map((value) => Math.pow(value - mean, 2)));
+}
+
+function standardDeviation(values) {
+  return Math.sqrt(variance(values));
 }
 
 function clamp(value, min, max) {

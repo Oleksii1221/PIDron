@@ -8,6 +8,9 @@
     "start": "electron .",
     "build:win": "electron-packager . PIDron --platform=win32 --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\""
   },
+  "dependencies": {
+    "three": "^0.181.2"
+  },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
     "electron": "^42.4.1"

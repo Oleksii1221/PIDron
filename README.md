@@ -31,6 +31,14 @@ PIDron can also run as a local Windows desktop app without opening a browser or 
 - Windows desktop executable: `npm run build:win`
 - Build output: `dist/PIDron-win32-x64/PIDron.exe`
 
+Current desktop modules:
+
+- Main PID simulator and drone visualizer.
+- Separate settings window with saved theme/language preferences.
+- Flight controller lab for generating Betaflight/INAV CLI or ArduPilot parameter drafts.
+- Blackbox/CSV analysis MVP for tracking error, noise, saturation, and PID adjustment hints.
+- Three.js 3D drone preview.
+
 ## Simulation Notes
 
 The first model should be transparent and editable rather than pretending to be a CFD-grade simulator.

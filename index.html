@@ -13,7 +13,9 @@
         <a href="#build" class="rail-item active" title="Сетап">⌘</a>
         <a href="#drone" class="rail-item" title="Дрон">✣</a>
         <a href="#pid" class="rail-item" title="PID">∿</a>
-        <a href="#settings" class="rail-item" title="Налаштування">⚙</a>
+        <button id="openFlightBtn" class="rail-item" type="button" title="Польотник">FC</button>
+        <button id="openAnalysisBtn" class="rail-item" type="button" title="Аналіз">AI</button>
+        <button id="openSettingsBtn" class="rail-item" type="button" title="Налаштування">⚙</button>
         <button id="kicoUnlock" class="kico-unlock" type="button" title="Kico">Kico</button>
       </nav>
 
@@ -198,6 +200,15 @@
                 <span><i class="pusher-dot"></i> Pusher</span>
                 <span><i class="coax-dot"></i> Coax pair</span>
               </div>
+              <div class="three-card">
+                <div class="panel-heading compact-heading">
+                  <div>
+                    <h3>3D вигляд</h3>
+                    <p class="muted">Орієнтація рами, плечі й pusher-мотори.</p>
+                  </div>
+                </div>
+                <canvas id="drone3dCanvas" width="760" height="360" aria-label="3D візуалізація дрона"></canvas>
+              </div>
             </section>
 
             <section class="panel overview-panel">
@@ -246,12 +257,20 @@
           </section>
         </section>
 
-        <section id="settings" class="panel settings-panel">
-          <div class="panel-heading">
+        <footer class="safety-strip">
+          <strong>Безпека:</strong> знімайте пропелери для bench-тестів, починайте з консервативних значень,
+          перевіряйте температуру моторів, failsafe і blackbox-логи.
+        </footer>
+      </main>
+
+      <section id="settingsWindow" class="app-window hidden" aria-label="Вікно налаштувань">
+        <div class="window-card">
+          <div class="window-titlebar">
             <div>
+              <p class="eyebrow">Окреме вікно</p>
               <h2>Налаштування</h2>
-              <p class="muted">Інтерфейс, вигляд і поведінка локального додатка.</p>
             </div>
+            <button class="window-close" data-close-window="settingsWindow" type="button">Закрити</button>
           </div>
           <div class="settings-grid">
             <label>
@@ -264,7 +283,7 @@
             </label>
             <label>
               <span class="label-row">Тема <button class="help" type="button" aria-label="Пояснення">?</button></span>
-              <span class="tip">Світла, темна або контрастна тема для майстерні/поля.</span>
+              <span class="tip">Світла, темна, контрастна або секретна пікмі після 5 кліків по Kico.</span>
               <select id="theme">
                 <option value="light">Світла</option>
                 <option value="dark">Темна</option>
@@ -284,15 +303,87 @@
               <span>Компактні панелі</span>
             </label>
           </div>
-        </section>
+          <div class="about-kico">
+            <strong>Kico</strong>
+            <span>Розробник PIDron. Локальний інструмент для експериментів із сетапами, PID, логами й польотниками.</span>
+          </div>
+        </div>
+      </section>
 
-        <footer class="safety-strip">
-          <strong>Безпека:</strong> знімайте пропелери для bench-тестів, починайте з консервативних значень,
-          перевіряйте температуру моторів, failsafe і blackbox-логи.
-        </footer>
-      </main>
+      <section id="flightWindow" class="app-window hidden" aria-label="Вікно польотника">
+        <div class="window-card wide-window">
+          <div class="window-titlebar">
+            <div>
+              <p class="eyebrow">Лабораторія польотника</p>
+              <h2>Підключення, PID і прошивка</h2>
+            </div>
+            <button class="window-close" data-close-window="flightWindow" type="button">Закрити</button>
+          </div>
+          <div class="fc-grid">
+            <label>
+              <span class="label-row">Тип firmware <button class="help" type="button" aria-label="Пояснення">?</button></span>
+              <span class="tip">Betaflight та INAV використовують MSP/CLI. ArduPilot використовує параметри на кшталт ATC_RAT_*.</span>
+              <select id="firmwareType">
+                <option value="betaflight">Betaflight</option>
+                <option value="inav">INAV</option>
+                <option value="ardupilot">ArduPilot</option>
+              </select>
+            </label>
+            <label>
+              <span class="label-row">Serial baud <button class="help" type="button" aria-label="Пояснення">?</button></span>
+              <span class="tip">115200 зазвичай ок для CLI/MSP. Для деяких плат може знадобитись інше значення.</span>
+              <select id="baudRate">
+                <option value="115200">115200</option>
+                <option value="57600">57600</option>
+                <option value="230400">230400</option>
+                <option value="921600">921600</option>
+              </select>
+            </label>
+            <button id="connectFcBtn" class="secondary-btn" type="button">Підключити</button>
+            <label class="toggle-row">
+              <input id="writeSafety" type="checkbox" />
+              <span>Я розумію ризик запису PID у польотник</span>
+            </label>
+          </div>
+          <div class="fc-actions">
+            <button id="generateCliBtn" class="secondary-btn" type="button">Згенерувати CLI/params</button>
+            <button id="copyCliBtn" class="secondary-btn" type="button">Скопіювати</button>
+            <button id="writeFcBtn" class="primary-btn" type="button">Записати у польотник</button>
+            <span id="fcStatus" class="preset-status">Не підключено</span>
+          </div>
+          <textarea id="fcCommandOutput" class="command-output" spellcheck="false"></textarea>
+          <p class="muted">
+            Прямий запис поки працює як обережний лабораторний режим. Якщо Web Serial недоступний або протокол не підтверджений,
+            використовуй згенерований CLI/params і перевіряй усе без пропів.
+          </p>
+        </div>
+      </section>
+
+      <section id="analysisWindow" class="app-window hidden" aria-label="Вікно аналізу">
+        <div class="window-card wide-window">
+          <div class="window-titlebar">
+            <div>
+              <p class="eyebrow">Аналіз логів</p>
+              <h2>Blackbox / CSV PID Assistant</h2>
+            </div>
+            <button class="window-close" data-close-window="analysisWindow" type="button">Закрити</button>
+          </div>
+          <div class="analysis-grid">
+            <label>
+              <span class="label-row">Лог польоту <button class="help" type="button" aria-label="Пояснення">?</button></span>
+              <span class="tip">MVP читає CSV/текстові експорти. Шукай колонки setpoint/gyro/error/motor або схожі назви.</span>
+              <input id="blackboxFile" type="file" accept=".csv,.txt,.log,.bbl" />
+            </label>
+            <button id="analyzeLogBtn" class="primary-btn" type="button">Проаналізувати</button>
+          </div>
+          <div id="analysisReport" class="analysis-report">
+            Завантаж лог, і PIDron оцінить noise, overshoot, tracking error та дасть обережну корекцію P/I/D.
+          </div>
+        </div>
+      </section>
     </div>
 
+    <script type="module" src="drone3d.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
