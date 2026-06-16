@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PIDron - локальний емулятор PID</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Локальний симулятор</p>
+        <h1>PIDron</h1>
+      </div>
+      <div class="topbar-actions">
+        <button id="optimizeBtn" class="primary-btn" type="button">Підібрати PID</button>
+        <button id="simulateBtn" class="secondary-btn" type="button">Оновити симуляцію</button>
+      </div>
+    </header>
+
+    <main class="app-layout">
+      <aside class="panel controls-panel">
+        <div class="panel-heading">
+          <h2>Конфігурація</h2>
+          <select id="presetSelect" aria-label="Пресет дрона"></select>
+        </div>
+
+        <section class="control-group">
+          <h3>Рама і схема</h3>
+          <div class="grid-2">
+            <label>
+              Клас рами
+              <select id="frameClass"></select>
+            </label>
+            <label>
+              Схема
+              <select id="layout"></select>
+            </label>
+            <label>
+              Пропульсивна схема
+              <select id="pusher"></select>
+            </label>
+            <label>
+              Розмір, дюйми
+              <input id="frameSize" type="number" min="2" max="16" step="0.1" />
+            </label>
+            <label>
+              Плече, мм
+              <input id="armLength" type="number" min="80" max="520" step="5" />
+            </label>
+            <label>
+              Маса рами, г
+              <input id="frameMass" type="number" min="80" max="2500" step="10" />
+            </label>
+            <label>
+              Корисне навантаження, г
+              <input id="payloadMass" type="number" min="0" max="2000" step="10" />
+            </label>
+            <label>
+              Розподіл маси
+              <input id="massSpread" type="range" min="0.35" max="0.85" step="0.01" />
+              <span id="massSpreadValue" class="range-value"></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="control-group">
+          <h3>Мотори, пропи, батарея</h3>
+          <div class="grid-2">
+            <label>
+              KV мотора
+              <input id="motorKv" type="number" min="200" max="4000" step="10" />
+            </label>
+            <label>
+              Статор, мм
+              <input id="stator" type="text" inputmode="numeric" />
+            </label>
+            <label>
+              Діаметр пропа, дюйми
+              <input id="propDiameter" type="number" min="2" max="14" step="0.1" />
+            </label>
+            <label>
+              Крок пропа, дюйми
+              <input id="propPitch" type="number" min="1" max="8" step="0.1" />
+            </label>
+            <label>
+              Лопатей
+              <input id="propBlades" type="number" min="2" max="6" step="1" />
+            </label>
+            <label>
+              Комірок LiPo
+              <input id="batteryCells" type="number" min="2" max="12" step="1" />
+            </label>
+            <label>
+              Ємність, mAh
+              <input id="batteryMah" type="number" min="450" max="30000" step="50" />
+            </label>
+            <label>
+              Опір батареї, mOhm
+              <input id="batteryResistance" type="number" min="6" max="180" step="1" />
+            </label>
+          </div>
+        </section>
+
+        <section class="control-group">
+          <h3>Середовище і фільтри</h3>
+          <div class="grid-2">
+            <label>
+              Motor lag, мс
+              <input id="motorLag" type="number" min="4" max="80" step="1" />
+            </label>
+            <label>
+              Фільтрація
+              <select id="filtering"></select>
+            </label>
+            <label>
+              Шум гіроскопа
+              <input id="noise" type="range" min="0" max="1" step="0.01" />
+              <span id="noiseValue" class="range-value"></span>
+            </label>
+            <label>
+              Вітер
+              <input id="wind" type="range" min="0" max="1" step="0.01" />
+              <span id="windValue" class="range-value"></span>
+            </label>
+            <label>
+              Агресивність стилю
+              <input id="style" type="range" min="0" max="1" step="0.01" />
+              <span id="styleValue" class="range-value"></span>
+            </label>
+            <label>
+              Цільовий rate, °/с
+              <input id="targetRate" type="number" min="120" max="900" step="10" />
+            </label>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <section class="panel overview-panel">
+          <div class="metric-grid" id="metrics"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Рекомендовані PID</h2>
+              <p class="muted">Стартові значення для rate loop. Остаточно перевіряйте тільки на реальному логу.</p>
+            </div>
+            <button id="copyBtn" class="icon-btn" type="button" title="Скопіювати результат">Copy</button>
+          </div>
+          <div id="pidCards" class="pid-grid"></div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Відповідь rate PID</h2>
+              <p class="muted">Команда step, motor lag, шум, вітер, saturation і sag враховані в дискретній моделі.</p>
+            </div>
+            <div class="tabs" role="tablist" aria-label="Вісь графіка">
+              <button class="tab active" data-axis="roll" type="button">Roll</button>
+              <button class="tab" data-axis="pitch" type="button">Pitch</button>
+              <button class="tab" data-axis="yaw" type="button">Yaw</button>
+            </div>
+          </div>
+          <canvas id="responseChart" width="1100" height="390" aria-label="Графік відповіді"></canvas>
+          <div id="chartLegend" class="legend"></div>
+        </section>
+
+        <section class="split-row">
+          <section class="panel">
+            <h2>Попередження</h2>
+            <div id="warnings" class="warnings"></div>
+          </section>
+          <section class="panel">
+            <h2>Прозора модель</h2>
+            <div id="modelNotes" class="model-notes"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <footer class="safety-strip">
+      <strong>Безпека:</strong> знімайте пропелери для bench-тестів, починайте з консервативних значень,
+      перевіряйте температуру моторів, failsafe і blackbox-логи.
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
