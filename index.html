@@ -14,6 +14,7 @@
         <a href="#drone" class="rail-item" title="Дрон">✣</a>
         <a href="#pid" class="rail-item" title="PID">∿</a>
         <a href="#settings" class="rail-item" title="Налаштування">⚙</a>
+        <button id="kicoUnlock" class="kico-unlock" type="button" title="Kico">Kico</button>
       </nav>
 
       <main class="main-app">
@@ -24,8 +25,12 @@
           </div>
           <div class="header-actions">
             <select id="presetSelect" aria-label="Пресет дрона"></select>
+            <input id="presetNameInput" class="preset-name-input" type="text" placeholder="Назва мого пресета" />
+            <button id="savePresetBtn" class="secondary-btn" type="button">Зберегти пресет</button>
+            <button id="deletePresetBtn" class="secondary-btn danger-btn" type="button">Видалити</button>
             <button id="optimizeBtn" class="primary-btn" type="button">Підібрати PID</button>
             <button id="simulateBtn" class="secondary-btn" type="button">Оновити</button>
+            <span id="presetStatus" class="preset-status" aria-live="polite"></span>
           </div>
         </header>
 

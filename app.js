@@ -167,6 +167,12 @@ const ids = [
   "targetRate"
 ];
 
+const storageKeys = {
+  settings: "pidron.settings",
+  customPresets: "pidron.customPresets",
+  pickmeUnlocked: "pidron.pickmeUnlocked"
+};
+
 const state = {
   config: { ...presets["5-race"] },
   activeAxis: "roll",
@@ -174,7 +180,18 @@ const state = {
   simulations: null,
   physics: null,
   warnings: [],
-  pusherMotors: []
+  pusherMotors: [],
+  customPresets: {},
+  activePresetKey: "5-race",
+  pickmeClicks: 0,
+  pickmeTimer: null,
+  settings: {
+    language: "uk",
+    theme: "light",
+    units: "metric",
+    compactMode: false,
+    pickmeUnlocked: false
+  }
 };
 
 const el = {};
@@ -197,6 +214,11 @@ function init() {
   el.optimizeBtn = document.getElementById("optimizeBtn");
   el.simulateBtn = document.getElementById("simulateBtn");
   el.copyBtn = document.getElementById("copyBtn");
+  el.savePresetBtn = document.getElementById("savePresetBtn");
+  el.deletePresetBtn = document.getElementById("deletePresetBtn");
+  el.presetNameInput = document.getElementById("presetNameInput");
+  el.presetStatus = document.getElementById("presetStatus");
+  el.kicoUnlock = document.getElementById("kicoUnlock");
   el.language = document.getElementById("language");
   el.theme = document.getElementById("theme");
   el.units = document.getElementById("units");
@@ -206,19 +228,14 @@ function init() {
   el.windValue = document.getElementById("windValue");
   el.styleValue = document.getElementById("styleValue");
 
+  loadStoredState();
   fillSelects();
+  applyStoredSettings();
   bindEvents();
   applyPreset("5-race");
 }
 
 function fillSelects() {
-  Object.entries(presets).forEach(([key, preset]) => {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = preset.label;
-    el.presetSelect.append(option);
-  });
-
   Object.entries(options).forEach(([id, values]) => {
     values.forEach(([value, label]) => {
       const option = document.createElement("option");
@@ -227,6 +244,34 @@ function fillSelects() {
       el[id].append(option);
     });
   });
+  ensurePickmeThemeOption();
+  renderPresetOptions();
+}
+
+function renderPresetOptions() {
+  const previous = el.presetSelect.value || state.activePresetKey;
+  el.presetSelect.innerHTML = "";
+  appendPresetGroup("Базові", presets);
+  if (Object.keys(state.customPresets).length > 0) {
+    appendPresetGroup("Мої пресети", state.customPresets, "custom:");
+  }
+  if ([...el.presetSelect.options].some((option) => option.value === previous)) {
+    el.presetSelect.value = previous;
+  }
+}
+
+function appendPresetGroup(label, items, prefix = "") {
+  const group = document.createElement("optgroup");
+  group.label = label;
+  Object.entries(items)
+    .sort(([, a], [, b]) => a.label.localeCompare(b.label, "uk"))
+    .forEach(([key, preset]) => {
+      const option = document.createElement("option");
+      option.value = `${prefix}${key}`;
+      option.textContent = preset.label;
+      group.append(option);
+    });
+  el.presetSelect.append(group);
 }
 
 function bindEvents() {
@@ -240,14 +285,29 @@ function bindEvents() {
   el.optimizeBtn.addEventListener("click", () => runAll(true));
   el.simulateBtn.addEventListener("click", () => runAll(false));
   el.copyBtn.addEventListener("click", copyResult);
+  el.savePresetBtn.addEventListener("click", saveCurrentPreset);
+  el.deletePresetBtn.addEventListener("click", deleteCurrentPreset);
+  el.kicoUnlock.addEventListener("click", handleKicoClick);
   el.theme.addEventListener("change", () => {
-    document.body.dataset.theme = el.theme.value;
+    state.settings.theme = el.theme.value;
+    applyStoredSettings();
+    saveSettings();
   });
   el.compactMode.addEventListener("change", () => {
-    document.body.classList.toggle("compact", el.compactMode.checked);
+    state.settings.compactMode = el.compactMode.checked;
+    applyStoredSettings();
+    saveSettings();
   });
-  el.language.addEventListener("change", render);
-  el.units.addEventListener("change", renderMetrics);
+  el.language.addEventListener("change", () => {
+    state.settings.language = el.language.value;
+    saveSettings();
+    render();
+  });
+  el.units.addEventListener("change", () => {
+    state.settings.units = el.units.value;
+    saveSettings();
+    renderMetrics();
+  });
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeAxis = button.dataset.axis;
@@ -258,11 +318,34 @@ function bindEvents() {
 }
 
 function applyPreset(key) {
-  state.config = { ...presets[key] };
-  state.pusherMotors = makePusherMotors(state.config);
+  const preset = getPresetByKey(key) || presets["5-race"];
+  state.activePresetKey = key;
+  state.config = { ...preset.config };
+  state.pusherMotors = preset.pusherMotors
+    ? resizePusherMotors(preset.pusherMotors, motorCountFor(state.config.layout))
+    : makePusherMotors(state.config);
   el.presetSelect.value = key;
+  el.presetNameInput.value = key.startsWith("custom:") ? preset.label : "";
+  setPresetStatus("");
   writeInputsFromConfig();
   runAll(true);
+}
+
+function getPresetByKey(key) {
+  if (key.startsWith("custom:")) {
+    const custom = state.customPresets[key.slice(7)];
+    if (!custom) return null;
+    return {
+      config: custom.config,
+      pusherMotors: custom.pusherMotors,
+      label: custom.label
+    };
+  }
+  if (!presets[key]) return null;
+  return {
+    config: presets[key],
+    label: presets[key].label
+  };
 }
 
 function writeInputsFromConfig() {
@@ -289,6 +372,129 @@ function readConfigFromInputs() {
   }
   state.config = next;
   updateRangeLabels();
+}
+
+function saveCurrentPreset() {
+  readConfigFromInputs();
+  const currentCustomKey = state.activePresetKey.startsWith("custom:") ? state.activePresetKey.slice(7) : null;
+  const currentName = currentCustomKey ? state.customPresets[currentCustomKey]?.label : "";
+  const cleanName =
+    el.presetNameInput.value.trim() ||
+    currentName ||
+    `Мій сетап ${Object.keys(state.customPresets).length + 1}`;
+  const existingKey =
+    currentCustomKey ||
+    Object.entries(state.customPresets).find(([, preset]) => preset.label.toLowerCase() === cleanName.toLowerCase())?.[0] ||
+    `preset-${Date.now()}`;
+
+  state.customPresets[existingKey] = {
+    label: cleanName,
+    config: snapshotConfig(),
+    pusherMotors: [...state.pusherMotors],
+    savedAt: new Date().toISOString()
+  };
+  saveCustomPresets();
+  renderPresetOptions();
+  state.activePresetKey = `custom:${existingKey}`;
+  el.presetSelect.value = state.activePresetKey;
+  el.presetNameInput.value = cleanName;
+  setPresetStatus("Збережено");
+}
+
+function deleteCurrentPreset() {
+  if (!state.activePresetKey.startsWith("custom:")) {
+    setPresetStatus("Базовий не видаляється");
+    return;
+  }
+  const key = state.activePresetKey.slice(7);
+  const label = state.customPresets[key]?.label || "цей пресет";
+  delete state.customPresets[key];
+  saveCustomPresets();
+  renderPresetOptions();
+  applyPreset("5-race");
+  setPresetStatus(`Видалено: ${label}`);
+}
+
+function setPresetStatus(message) {
+  el.presetStatus.textContent = message;
+  if (!message) return;
+  window.clearTimeout(setPresetStatus.timer);
+  setPresetStatus.timer = window.setTimeout(() => {
+    el.presetStatus.textContent = "";
+  }, 2200);
+}
+
+function snapshotConfig() {
+  return ids.reduce((snapshot, id) => {
+    snapshot[id] = state.config[id];
+    return snapshot;
+  }, {});
+}
+
+function loadStoredState() {
+  const storedSettings = readJson(storageKeys.settings, {});
+  const storedPresets = readJson(storageKeys.customPresets, {});
+  state.settings = {
+    ...state.settings,
+    ...storedSettings,
+    pickmeUnlocked: localStorage.getItem(storageKeys.pickmeUnlocked) === "true" || Boolean(storedSettings.pickmeUnlocked)
+  };
+  state.customPresets = storedPresets && typeof storedPresets === "object" ? storedPresets : {};
+}
+
+function applyStoredSettings() {
+  ensurePickmeThemeOption();
+  if (state.settings.theme === "pickme" && !state.settings.pickmeUnlocked) {
+    state.settings.theme = "light";
+  }
+  el.language.value = state.settings.language || "uk";
+  el.theme.value = state.settings.theme || "light";
+  el.units.value = state.settings.units || "metric";
+  el.compactMode.checked = Boolean(state.settings.compactMode);
+  document.body.dataset.theme = el.theme.value;
+  document.body.classList.toggle("compact", el.compactMode.checked);
+  drawChart();
+}
+
+function saveSettings() {
+  localStorage.setItem(storageKeys.settings, JSON.stringify(state.settings));
+}
+
+function saveCustomPresets() {
+  localStorage.setItem(storageKeys.customPresets, JSON.stringify(state.customPresets));
+}
+
+function readJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function ensurePickmeThemeOption() {
+  if (!state.settings.pickmeUnlocked || [...el.theme.options].some((option) => option.value === "pickme")) return;
+  const option = document.createElement("option");
+  option.value = "pickme";
+  option.textContent = "Пікмі";
+  el.theme.append(option);
+}
+
+function handleKicoClick() {
+  state.pickmeClicks += 1;
+  window.clearTimeout(state.pickmeTimer);
+  state.pickmeTimer = window.setTimeout(() => {
+    state.pickmeClicks = 0;
+  }, 1800);
+
+  if (state.pickmeClicks < 5) return;
+  state.pickmeClicks = 0;
+  state.settings.pickmeUnlocked = true;
+  state.settings.theme = "pickme";
+  localStorage.setItem(storageKeys.pickmeUnlocked, "true");
+  saveSettings();
+  applyStoredSettings();
 }
 
 function updateRangeLabels() {
