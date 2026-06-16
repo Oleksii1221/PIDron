@@ -1,0 +1,15 @@
+{
+  "name": "pidron",
+  "version": "1.1.0",
+  "description": "PIDron desktop drone emulator and PID tuning assistant.",
+  "main": "desktop/main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-packager . PIDron --platform=win32 --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\""
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "electron": "^42.4.1"
+  }
+}

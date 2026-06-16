@@ -23,6 +23,14 @@ Use a self-contained frontend first:
 
 No backend is required for the first version. The app can run directly from the browser or through a tiny local static server.
 
+## Desktop Build
+
+PIDron can also run as a local Windows desktop app without opening a browser or starting a local web server.
+
+- Development run: `npm start`
+- Windows desktop executable: `npm run build:win`
+- Build output: `dist/PIDron-win32-x64/PIDron.exe`
+
 ## Simulation Notes
 
 The first model should be transparent and editable rather than pretending to be a CFD-grade simulator.

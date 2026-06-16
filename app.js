@@ -959,7 +959,11 @@ async function copyResult() {
     0
   )}%, ${state.physics.battery.label}, pusher ${format(state.physics.pusherRatio * 100, 0)}%`;
   try {
-    await navigator.clipboard.writeText(text);
+    if (window.pidronDesktop?.writeClipboard) {
+      window.pidronDesktop.writeClipboard(text);
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
     el.copyBtn.textContent = "Copied";
     window.setTimeout(() => {
       el.copyBtn.textContent = "Copy";
