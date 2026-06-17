@@ -229,7 +229,7 @@ function init() {
   el.presetNameInput = document.getElementById("presetNameInput");
   el.presetStatus = document.getElementById("presetStatus");
   el.presetCards = document.getElementById("presetCards");
-  el.brandUnlock = document.getElementById("brandUnlock");
+  el.appCredit = document.getElementById("appCredit");
   el.pageEyebrow = document.getElementById("pageEyebrow");
   el.pageTitle = document.getElementById("pageTitle");
   el.firmwareType = document.getElementById("firmwareType");
@@ -356,7 +356,7 @@ function bindEvents() {
   el.copyBtn.addEventListener("click", copyResult);
   el.savePresetBtn.addEventListener("click", saveCurrentPreset);
   el.deletePresetBtn.addEventListener("click", deleteCurrentPreset);
-  el.brandUnlock.addEventListener("click", handleKicoClick);
+  el.appCredit.addEventListener("click", handleKicoClick);
   document.querySelectorAll("[data-page]").forEach((button) => {
     button.addEventListener("click", () => showPage(button.dataset.page));
   });
