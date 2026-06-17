@@ -106,6 +106,12 @@
         color: #06110e;
       }
 
+      .button.download {
+        min-height: 48px;
+        padding: 0 18px;
+        font-size: 1rem;
+      }
+
       .hero {
         display: grid;
         grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
@@ -279,8 +285,27 @@
 
       .release {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
         gap: 14px;
+      }
+
+      .release-main {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+      }
+
+      .release-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .release-note {
+        display: block;
+        color: var(--muted);
+        line-height: 1.5;
       }
 
       code {
@@ -335,7 +360,7 @@
               3D-візуалізації, Blackbox/CSV аналізу та роботи з Betaflight, INAV і ArduPilot.
             </p>
             <div class="hero-actions">
-              <a class="button primary" href="#download">Зібрати локально</a>
+              <a class="button primary" href="#download">Завантажити</a>
               <a class="button" href="https://github.com/Oleksii1221/PIDron">Відкрити репозиторій</a>
             </div>
           </div>
@@ -383,15 +408,22 @@
       </section>
 
       <section id="download">
-        <h2 class="section-title">Build / Download</h2>
+        <h2 class="section-title">Завантажити</h2>
         <div class="release">
-          <article class="card">
-            <strong>Windows</strong>
-            <span>Run <code>npm run build:installer</code>. Output: <code>dist-installer/PIDron-Setup-1.2.0-x64.exe</code>. Portable build: <code>npm run build:win</code>.</span>
+          <article class="card release-main">
+            <strong>Windows installer</strong>
+            <span class="release-note">Рекомендований варіант для Windows: звичайний setup з іконкою PIDron, вибором папки, ярликами в Start Menu/Desktop і деінсталятором.</span>
+            <div class="release-actions">
+              <a class="button primary download" href="https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-Setup-1.2.0-x64.exe">Завантажити PIDron Setup</a>
+              <a class="button download" href="https://github.com/Oleksii1221/PIDron/releases/tag/v1.2.0">Всі файли релізу</a>
+            </div>
           </article>
           <article class="card">
-            <strong>Ubuntu / Linux</strong>
-            <span>Run <code>npm run build:linux</code>. Output: <code>dist/PIDron-linux-x64/PIDron</code>.</span>
+            <strong>Інші збірки</strong>
+            <span>
+              <a href="https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-win-x64.zip">Windows portable ZIP</a><br />
+              <a href="https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x64.zip">Ubuntu/Linux ZIP</a>
+            </span>
           </article>
           <article class="card">
             <strong>No web server</strong>

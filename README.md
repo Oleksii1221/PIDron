@@ -34,6 +34,12 @@ Windows quick start:
 
 ## Desktop Builds
 
+Latest release downloads:
+
+- Windows installer: `https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-Setup-1.2.0-x64.exe`
+- Windows portable ZIP: `https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-win-x64.zip`
+- Ubuntu/Linux ZIP: `https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x64.zip`
+
 ```powershell
 npm run build:win
 npm run build:installer
@@ -47,7 +53,7 @@ Outputs:
 - Windows installer: `dist-installer/PIDron-Setup-1.2.0-x64.exe`
 - Ubuntu/Linux: `dist/PIDron-linux-x64/PIDron`
 
-The installer uses an NSIS setup flow with install directory selection, Start Menu shortcut, desktop shortcut, and uninstall entry.
+The installer uses an NSIS setup flow with a PIDron app icon, install directory selection, Start Menu shortcut, desktop shortcut, and uninstall entry.
 
 ## Project Site
 
