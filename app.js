@@ -219,13 +219,7 @@ function init() {
   el.deletePresetBtn = document.getElementById("deletePresetBtn");
   el.presetNameInput = document.getElementById("presetNameInput");
   el.presetStatus = document.getElementById("presetStatus");
-  el.kicoUnlock = document.getElementById("kicoUnlock");
-  el.openSettingsBtn = document.getElementById("openSettingsBtn");
-  el.openFlightBtn = document.getElementById("openFlightBtn");
-  el.openAnalysisBtn = document.getElementById("openAnalysisBtn");
-  el.settingsWindow = document.getElementById("settingsWindow");
-  el.flightWindow = document.getElementById("flightWindow");
-  el.analysisWindow = document.getElementById("analysisWindow");
+  el.authorInfo = document.getElementById("authorInfo");
   el.firmwareType = document.getElementById("firmwareType");
   el.baudRate = document.getElementById("baudRate");
   el.connectFcBtn = document.getElementById("connectFcBtn");
@@ -306,20 +300,9 @@ function bindEvents() {
   el.copyBtn.addEventListener("click", copyResult);
   el.savePresetBtn.addEventListener("click", saveCurrentPreset);
   el.deletePresetBtn.addEventListener("click", deleteCurrentPreset);
-  el.kicoUnlock.addEventListener("click", handleKicoClick);
-  el.openSettingsBtn.addEventListener("click", () => openWindow("settingsWindow"));
-  el.openFlightBtn.addEventListener("click", () => {
-    openWindow("flightWindow");
-    generateFlightControllerCommands();
-  });
-  el.openAnalysisBtn.addEventListener("click", () => openWindow("analysisWindow"));
-  document.querySelectorAll("[data-close-window]").forEach((button) => {
-    button.addEventListener("click", () => closeWindow(button.dataset.closeWindow));
-  });
-  document.querySelectorAll(".app-window").forEach((windowEl) => {
-    windowEl.addEventListener("click", (event) => {
-      if (event.target === windowEl) closeWindow(windowEl.id);
-    });
+  el.authorInfo.addEventListener("click", handleKicoClick);
+  document.querySelectorAll(".page-tab").forEach((button) => {
+    button.addEventListener("click", () => showPage(button.dataset.page));
   });
   wireHelpTooltips();
   el.generateCliBtn.addEventListener("click", generateFlightControllerCommands);
@@ -356,25 +339,43 @@ function bindEvents() {
   });
 }
 
-function openWindow(id) {
-  el[id].classList.remove("hidden");
-}
-
-function closeWindow(id) {
-  el[id].classList.add("hidden");
+function showPage(id) {
+  document.querySelectorAll(".page-view").forEach((page) => page.classList.toggle("active", page.id === id));
+  document.querySelectorAll(".page-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.page === id));
+  if (id === "flightPage") generateFlightControllerCommands();
+  if (id === "simulatorPage") {
+    drawChart();
+    renderDrone();
+  }
 }
 
 function wireHelpTooltips() {
   document.querySelectorAll(".help").forEach((button) => {
     const tip = button.closest("label")?.querySelector(".tip");
     if (!tip) return;
-    const show = () => tip.classList.add("is-visible");
-    const hide = () => tip.classList.remove("is-visible");
+    const show = () => showTip(button, tip);
+    const hide = () => {
+      if (document.activeElement !== button) hideTip(tip);
+    };
     button.addEventListener("mouseenter", show);
     button.addEventListener("mouseleave", hide);
+    button.addEventListener("pointerenter", show);
+    button.addEventListener("pointerleave", hide);
     button.addEventListener("focus", show);
-    button.addEventListener("blur", hide);
+    button.addEventListener("blur", () => hideTip(tip));
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      show();
+    });
   });
+}
+
+function showTip(_button, tip) {
+  tip.classList.add("is-visible");
+}
+
+function hideTip(tip) {
+  tip.classList.remove("is-visible");
 }
 
 function applyPreset(key) {
