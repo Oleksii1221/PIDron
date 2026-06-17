@@ -3,6 +3,25 @@
   "version": "1.2.0",
   "description": "PIDron desktop drone emulator and PID tuning assistant.",
   "author": "Oleksii \"Kico\" (@Oleksii1221)",
+  "license": "MIT",
+  "homepage": "https://oleksii1221.github.io/PIDron/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oleksii1221/PIDron.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Oleksii1221/PIDron/issues"
+  },
+  "keywords": [
+    "drone",
+    "pid",
+    "quadcopter",
+    "betaflight",
+    "inav",
+    "ardupilot",
+    "electron",
+    "simulator"
+  ],
   "main": "desktop/main.cjs",
   "private": true,
   "scripts": {

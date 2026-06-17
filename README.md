@@ -1,25 +1,62 @@
 # PIDron
 
-PIDron is a local desktop workstation for drone setup experiments, rate PID simulation, preset management, and flight-controller PID workflows.
+<p align="center">
+  <strong>Local desktop workstation for drone setup simulation, PID tuning, presets, log analysis, and flight-controller workflows.</strong>
+</p>
 
-The interface is Ukrainian-first and runs locally through Electron from local app files. It does not need a local web server, localhost page, or external backend.
+<p align="center">
+  <a href="https://oleksii1221.github.io/PIDron/">Website</a>
+  ·
+  <a href="https://github.com/Oleksii1221/PIDron/releases/tag/v1.2.0">Latest release</a>
+  ·
+  <a href="https://github.com/Oleksii1221/PIDron/issues">Issues</a>
+</p>
 
-## Current Features
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.2.0-55c0a6">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-151d1b">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-42-55c0a6">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-151d1b">
+</p>
 
-- Multicopter setup editor for 5", 7", 10", and custom builds.
-- Quad, hex, octo, coax layouts with per-motor standard/pusher mixing.
+PIDron is a Ukrainian-first Electron desktop app for experimenting with multicopter setups and rate-loop PID behavior before touching a real flight controller. It runs locally from packaged app files: no web server, localhost page, or cloud backend is required.
+
+## Download
+
+| Platform | Recommended package |
+| --- | --- |
+| Windows | [PIDron-Setup-1.2.0-x64.exe](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-Setup-1.2.0-x64.exe) |
+| Windows portable | [PIDron-1.2.0-win-x64.zip](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-win-x64.zip) |
+| Ubuntu / Linux | [PIDron-1.2.0-linux-x64.zip](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x64.zip) |
+
+The Windows installer uses NSIS with a PIDron icon, install directory selection, desktop shortcut, Start Menu shortcut, and uninstall entry.
+
+## Highlights
+
+- Setup editor for 5", 7", 10", and custom builds.
+- Quad, hex, octo, and coax layouts with per-motor standard/pusher mixing.
 - Free mixing of frames, motors, props, batteries, payload, filtering, wind, and noise assumptions.
-- Transparent physics model: thrust estimate, inertia, motor lag, battery sag, prop loading, noise, wind, saturation.
-- Roll/pitch/yaw rate PID simulation with response graph.
-- Automatic P/I/D/feedforward suggestions with overshoot, settling, oscillation risk, and saturation metrics.
-- Custom preset saving with a dedicated Presets page.
+- Transparent physics model: thrust estimate, inertia, motor lag, battery sag, prop loading, noise, wind, and saturation.
+- Roll/pitch/yaw rate PID simulation with response graphs.
+- Automatic P/I/D/feedforward suggestions with overshoot, settling time, oscillation risk, and saturation metrics.
+- Named presets saved locally.
 - Three.js drone preview with PID-response motion.
 - Flight-controller lab for Betaflight/INAV CLI and ArduPilot parameter drafts.
-- Serial workflow MVP for connecting, reading PID text output, and guarded write.
-- CSV/TXT log analysis MVP plus honest detection for binary `.bbl` files.
-- Theme and compact-mode settings persisted locally.
+- Serial workflow MVP for reading PID text output and guarded write.
+- CSV/TXT log analysis MVP with honest detection for binary `.bbl` files.
+- Persisted themes, language, and compact mode.
 
-## Run Locally
+## App Structure
+
+| Area | Purpose |
+| --- | --- |
+| Simulator | Drone geometry, propulsion, battery, environment, filters, and PID step-response. |
+| Presets | Saved user setups with names and quick restore. |
+| Analysis | Flight log import, signal checks, and PID correction hints. |
+| Flight Controller | Betaflight, INAV, and ArduPilot-oriented PID text workflows. |
+| Settings | Language, theme, compact mode, and app preferences. |
+
+## Run From Source
 
 ```powershell
 npm install
@@ -32,34 +69,28 @@ Windows quick start:
 .\run-pidron.bat
 ```
 
-## Desktop Builds
-
-Latest release downloads:
-
-- Windows installer: `https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-Setup-1.2.0-x64.exe`
-- Windows portable ZIP: `https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-win-x64.zip`
-- Ubuntu/Linux ZIP: `https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x64.zip`
+## Build
 
 ```powershell
-npm run build:win
 npm run build:installer
+npm run build:win
 npm run build:linux
 npm run build:all
 ```
 
 Outputs:
 
-- Windows portable: `dist/PIDron-win32-x64/PIDron.exe`
 - Windows installer: `dist-installer/PIDron-Setup-1.2.0-x64.exe`
+- Windows portable: `dist/PIDron-win32-x64/PIDron.exe`
 - Ubuntu/Linux: `dist/PIDron-linux-x64/PIDron`
 
-The installer uses an NSIS setup flow with a PIDron app icon, install directory selection, Start Menu shortcut, desktop shortcut, and uninstall entry.
+## Roadmap
 
-## Project Site
-
-GitHub Pages source is in `docs/` and is published from the `gh-pages` branch:
-
-`https://oleksii1221.github.io/PIDron/`
+- Native MSP/CLI reader for real Betaflight and INAV boards.
+- Direct `.bbl` Blackbox import without CSV conversion.
+- Richer 3D animation of thrust, tilt, saturation, and PID response.
+- Safer guided write flow with board profile detection and backup.
+- More validated motor, prop, and battery presets.
 
 ## Safety
 
@@ -67,6 +98,13 @@ PIDron recommendations are starting points, not guaranteed flight-safe final val
 
 - Remove props during bench testing.
 - Start with conservative values.
-- Check motor temperature and oscillation.
-- Validate failsafe and arming behavior.
+- Check motor temperature and oscillation after every tuning change.
+- Validate failsafe and arming behavior before flight.
 - Use real Blackbox logs whenever possible.
+
+## Project
+
+- Website: <https://oleksii1221.github.io/PIDron/>
+- Releases: <https://github.com/Oleksii1221/PIDron/releases>
+- Maintainer: Oleksii "Kico" (@Oleksii1221)
+- License: MIT

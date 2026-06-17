@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest an improvement for PIDron
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What should PIDron help with?
+      description: Describe the workflow or problem.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should the app do?
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety notes
+      description: Any risks around real props, batteries, flight controllers, writes, or PID values?
