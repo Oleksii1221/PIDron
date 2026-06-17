@@ -2,19 +2,60 @@
   "name": "pidron",
   "version": "1.2.0",
   "description": "PIDron desktop drone emulator and PID tuning assistant.",
+  "author": "Oleksii \"Kico\" (@Oleksii1221)",
   "main": "desktop/main.cjs",
   "private": true,
   "scripts": {
     "start": "electron .",
     "build:win": "electron-packager . PIDron --platform=win32 --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\"",
     "build:linux": "electron-packager . PIDron --platform=linux --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\"",
-    "build:all": "npm run build:win && npm run build:linux"
+    "build:all": "npm run build:win && npm run build:linux",
+    "build:installer": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.oleksii1221.pidron",
+    "productName": "PIDron",
+    "copyright": "Copyright (c) 2026 Oleksii \"Kico\"",
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "index.html",
+      "styles.css",
+      "app.js",
+      "drone3d.js",
+      "desktop/**/*",
+      "node_modules/three/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "PIDron-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PIDron",
+      "uninstallDisplayName": "PIDron"
+    }
   },
   "dependencies": {
     "three": "^0.181.2"
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
-    "electron": "^42.4.1"
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3"
   }
 }

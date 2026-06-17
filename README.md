@@ -2,7 +2,7 @@
 
 PIDron is a local desktop workstation for drone setup experiments, rate PID simulation, preset management, and flight-controller PID workflows.
 
-The interface is Ukrainian-first and runs locally through Electron. It does not need an external backend.
+The interface is Ukrainian-first and runs locally through Electron from local app files. It does not need a local web server, localhost page, or external backend.
 
 ## Current Features
 
@@ -36,20 +36,22 @@ Windows quick start:
 
 ```powershell
 npm run build:win
+npm run build:installer
 npm run build:linux
 npm run build:all
 ```
 
 Outputs:
 
-- Windows: `dist/PIDron-win32-x64/PIDron.exe`
+- Windows portable: `dist/PIDron-win32-x64/PIDron.exe`
+- Windows installer: `dist-installer/PIDron-Setup-1.2.0-x64.exe`
 - Ubuntu/Linux: `dist/PIDron-linux-x64/PIDron`
+
+The installer uses an NSIS setup flow with install directory selection, Start Menu shortcut, desktop shortcut, and uninstall entry.
 
 ## Project Site
 
-GitHub Pages source is in `docs/`. Enable Pages for the repository from the `master` branch and `/docs` folder.
-
-Expected URL after Pages is enabled:
+GitHub Pages source is in `docs/` and is published from the `gh-pages` branch:
 
 `https://oleksii1221.github.io/PIDron/`
 
