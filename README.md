@@ -14,7 +14,7 @@
 
 <p align="center">
   <img alt="Version" src="https://img.shields.io/badge/version-1.2.0-55c0a6">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-151d1b">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Ubuntu%20%7C%20Fedora-151d1b">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-42-55c0a6">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-151d1b">
 </p>
@@ -27,7 +27,9 @@ PIDron is a Ukrainian-first Electron desktop app for experimenting with multicop
 | --- | --- |
 | Windows | [PIDron-Setup-1.2.0-x64.exe](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-Setup-1.2.0-x64.exe) |
 | Windows portable | [PIDron-1.2.0-win-x64.zip](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-win-x64.zip) |
-| Ubuntu / Linux | [PIDron-1.2.0-linux-x64.zip](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x64.zip) |
+| Ubuntu / Debian | [PIDron-1.2.0-linux-amd64.deb](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-amd64.deb) |
+| Fedora / RPM | [PIDron-1.2.0-linux-x86_64.rpm](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x86_64.rpm) |
+| Linux portable | [PIDron-1.2.0-linux-x64.zip](https://github.com/Oleksii1221/PIDron/releases/download/v1.2.0/PIDron-1.2.0-linux-x64.zip) |
 
 The Windows installer uses NSIS with a PIDron icon, install directory selection, desktop shortcut, Start Menu shortcut, and uninstall entry.
 
@@ -73,6 +75,9 @@ Windows quick start:
 
 ```powershell
 npm run build:installer
+npm run build:ubuntu
+npm run build:fedora
+npm run build:linux:packages
 npm run build:win
 npm run build:linux
 npm run build:all
@@ -82,6 +87,8 @@ Outputs:
 
 - Windows installer: `dist-installer/PIDron-Setup-1.2.0-x64.exe`
 - Windows portable: `dist/PIDron-win32-x64/PIDron.exe`
+- Ubuntu/Debian package: `dist-installer/PIDron-1.2.0-linux-amd64.deb`
+- Fedora/RPM package: `dist-installer/PIDron-1.2.0-linux-x86_64.rpm`
 - Ubuntu/Linux: `dist/PIDron-linux-x64/PIDron`
 
 ## Roadmap

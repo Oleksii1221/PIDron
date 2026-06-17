@@ -1,0 +1,54 @@
+name: Linux Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_release:
+        description: Upload packages to the v1.2.0 release
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux-packages:
+    name: Build Ubuntu DEB and Fedora RPM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux packages
+        run: npm run build:linux:packages
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pidron-linux-packages
+          path: |
+            dist-installer/*.deb
+            dist-installer/*.rpm
+
+      - name: Upload packages to release
+        if: ${{ github.event.inputs.upload_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.2.0
+          files: |
+            dist-installer/*.deb
+            dist-installer/*.rpm

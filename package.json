@@ -23,13 +23,17 @@
     "simulator"
   ],
   "main": "desktop/main.cjs",
+  "desktopName": "PIDron",
   "private": true,
   "scripts": {
     "start": "electron .",
     "build:win": "electron-packager . PIDron --platform=win32 --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\"",
     "build:linux": "electron-packager . PIDron --platform=linux --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\"",
     "build:all": "npm run build:win && npm run build:linux",
-    "build:installer": "electron-builder --win nsis --x64"
+    "build:installer": "electron-builder --win nsis --x64",
+    "build:ubuntu": "electron-builder --linux deb --x64",
+    "build:fedora": "electron-builder --linux rpm --x64",
+    "build:linux:packages": "electron-builder --linux deb rpm --x64"
   },
   "build": {
     "appId": "com.oleksii1221.pidron",
@@ -71,6 +75,29 @@
       "uninstallerIcon": "assets/icon.ico",
       "shortcutName": "PIDron",
       "uninstallDisplayName": "PIDron"
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "category": "Utility",
+      "syncDesktopName": true,
+      "maintainer": "Oleksii \"Kico\" (@Oleksii1221)",
+      "synopsis": "Drone setup simulator and PID tuning workstation",
+      "description": "PIDron is a local desktop workstation for drone setup simulation, PID tuning, presets, log analysis, and flight-controller workflows.",
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "PIDron-${version}-linux-${arch}.${ext}"
     }
   },
   "dependencies": {
