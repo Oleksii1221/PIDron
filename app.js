@@ -173,6 +173,15 @@ const storageKeys = {
   pickmeUnlocked: "pidron.pickmeUnlocked"
 };
 
+const pageMeta = {
+  setupPage: ["Сетап", "Конструктор дрона"],
+  tunePage: ["PID", "Тюнінг і симуляція"],
+  presetsPage: ["Бібліотека", "Мої пресети"],
+  flightPage: ["Польотник", "Підключення та прошивка"],
+  analysisPage: ["Blackbox", "Аналіз логів"],
+  settingsPage: ["Система", "Налаштування"]
+};
+
 const state = {
   config: { ...presets["5-race"] },
   activeAxis: "roll",
@@ -219,16 +228,21 @@ function init() {
   el.deletePresetBtn = document.getElementById("deletePresetBtn");
   el.presetNameInput = document.getElementById("presetNameInput");
   el.presetStatus = document.getElementById("presetStatus");
-  el.authorInfo = document.getElementById("authorInfo");
+  el.presetCards = document.getElementById("presetCards");
+  el.brandUnlock = document.getElementById("brandUnlock");
+  el.pageEyebrow = document.getElementById("pageEyebrow");
+  el.pageTitle = document.getElementById("pageTitle");
   el.firmwareType = document.getElementById("firmwareType");
   el.baudRate = document.getElementById("baudRate");
   el.connectFcBtn = document.getElementById("connectFcBtn");
+  el.readFcBtn = document.getElementById("readFcBtn");
   el.writeSafety = document.getElementById("writeSafety");
   el.generateCliBtn = document.getElementById("generateCliBtn");
   el.copyCliBtn = document.getElementById("copyCliBtn");
   el.writeFcBtn = document.getElementById("writeFcBtn");
   el.fcStatus = document.getElementById("fcStatus");
   el.fcCommandOutput = document.getElementById("fcCommandOutput");
+  el.fcReadOutput = document.getElementById("fcReadOutput");
   el.blackboxFile = document.getElementById("blackboxFile");
   el.analyzeLogBtn = document.getElementById("analyzeLogBtn");
   el.analysisReport = document.getElementById("analysisReport");
@@ -271,6 +285,7 @@ function renderPresetOptions() {
   if ([...el.presetSelect.options].some((option) => option.value === previous)) {
     el.presetSelect.value = previous;
   }
+  renderPresetCards();
 }
 
 function appendPresetGroup(label, items, prefix = "") {
@@ -287,6 +302,47 @@ function appendPresetGroup(label, items, prefix = "") {
   el.presetSelect.append(group);
 }
 
+function renderPresetCards() {
+  if (!el.presetCards) return;
+  const entries = Object.entries(state.customPresets);
+  if (!entries.length) {
+    el.presetCards.innerHTML = `
+      <article class="empty-state">
+        <strong>Ще немає збережених пресетів</strong>
+        <span>Введи назву зверху, натисни “Зберегти пресет”, і сетап з'явиться тут окремою карткою.</span>
+      </article>`;
+    return;
+  }
+  el.presetCards.innerHTML = entries
+    .sort(([, a], [, b]) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0))
+    .map(([key, preset]) => {
+      const config = preset.config || {};
+      const motors = motorCountFor(config.layout);
+      const pusherCount = Array.isArray(preset.pusherMotors) ? preset.pusherMotors.filter(Boolean).length : 0;
+      const savedAt = preset.savedAt ? new Date(preset.savedAt).toLocaleString("uk-UA") : "без дати";
+      return `
+        <article class="preset-card ${state.activePresetKey === `custom:${key}` ? "active" : ""}">
+          <div>
+            <span class="preset-chip">${config.frameClass || "custom"} · ${String(config.layout || "quad").toUpperCase()}</span>
+            <h3>${escapeHtml(preset.label || key)}</h3>
+            <p>${motors} моторів, ${pusherCount}/${motors} pusher · ${config.propDiameter || "-"}" prop · ${config.batteryCells || "-"}S ${batteryProfile(config.batteryType).label}</p>
+            <small>Збережено: ${savedAt}</small>
+          </div>
+          <div class="preset-card-actions">
+            <button class="secondary-btn" type="button" data-load-preset="${key}">Відкрити</button>
+            <button class="secondary-btn danger-btn" type="button" data-remove-preset="${key}">Видалити</button>
+          </div>
+        </article>`;
+    })
+    .join("");
+  el.presetCards.querySelectorAll("[data-load-preset]").forEach((button) => {
+    button.addEventListener("click", () => applyPreset(`custom:${button.dataset.loadPreset}`));
+  });
+  el.presetCards.querySelectorAll("[data-remove-preset]").forEach((button) => {
+    button.addEventListener("click", () => removeCustomPreset(button.dataset.removePreset));
+  });
+}
+
 function bindEvents() {
   el.presetSelect.addEventListener("change", (event) => applyPreset(event.target.value));
   ids.forEach((id) => {
@@ -300,14 +356,15 @@ function bindEvents() {
   el.copyBtn.addEventListener("click", copyResult);
   el.savePresetBtn.addEventListener("click", saveCurrentPreset);
   el.deletePresetBtn.addEventListener("click", deleteCurrentPreset);
-  el.authorInfo.addEventListener("click", handleKicoClick);
-  document.querySelectorAll(".page-tab").forEach((button) => {
+  el.brandUnlock.addEventListener("click", handleKicoClick);
+  document.querySelectorAll("[data-page]").forEach((button) => {
     button.addEventListener("click", () => showPage(button.dataset.page));
   });
   wireHelpTooltips();
   el.generateCliBtn.addEventListener("click", generateFlightControllerCommands);
   el.copyCliBtn.addEventListener("click", copyFlightControllerCommands);
   el.connectFcBtn.addEventListener("click", connectFlightController);
+  el.readFcBtn.addEventListener("click", readFlightControllerPid);
   el.writeFcBtn.addEventListener("click", writeFlightControllerCommands);
   el.analyzeLogBtn.addEventListener("click", analyzeBlackboxFile);
   el.theme.addEventListener("change", () => {
@@ -335,18 +392,24 @@ function bindEvents() {
       state.activeAxis = button.dataset.axis;
       document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab === button));
       drawChart();
+      dispatchSimulationMotion();
     });
   });
 }
 
 function showPage(id) {
   document.querySelectorAll(".page-view").forEach((page) => page.classList.toggle("active", page.id === id));
-  document.querySelectorAll(".page-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.page === id));
+  document.querySelectorAll("[data-page]").forEach((tab) => tab.classList.toggle("active", tab.dataset.page === id));
+  const [eyebrow, title] = pageMeta[id] || pageMeta.setupPage;
+  el.pageEyebrow.textContent = eyebrow;
+  el.pageTitle.textContent = title;
   if (id === "flightPage") generateFlightControllerCommands();
-  if (id === "simulatorPage") {
+  if (id === "setupPage") {
     drawChart();
     renderDrone();
   }
+  if (id === "tunePage") drawChart();
+  if (id === "presetsPage") renderPresetCards();
 }
 
 function wireHelpTooltips() {
@@ -460,6 +523,8 @@ function saveCurrentPreset() {
   el.presetSelect.value = state.activePresetKey;
   el.presetNameInput.value = cleanName;
   setPresetStatus("Збережено");
+  renderPresetCards();
+  showPage("presetsPage");
 }
 
 function deleteCurrentPreset() {
@@ -468,12 +533,19 @@ function deleteCurrentPreset() {
     return;
   }
   const key = state.activePresetKey.slice(7);
+  removeCustomPreset(key);
+}
+
+function removeCustomPreset(key) {
   const label = state.customPresets[key]?.label || "цей пресет";
   delete state.customPresets[key];
   saveCustomPresets();
   renderPresetOptions();
-  applyPreset("5-race");
+  if (state.activePresetKey === `custom:${key}`) {
+    applyPreset("5-race");
+  }
   setPresetStatus(`Видалено: ${label}`);
+  renderPresetCards();
 }
 
 function setPresetStatus(message) {
@@ -535,6 +607,15 @@ function readJson(key, fallback) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function ensurePickmeThemeOption() {
   if (!state.settings.pickmeUnlocked) return;
   [
@@ -594,6 +675,7 @@ function runAll(optimize) {
   });
   render();
   generateFlightControllerCommands();
+  dispatchSimulationMotion();
 }
 
 function estimatePhysics(config) {
@@ -978,6 +1060,22 @@ function render() {
   drawChart();
 }
 
+function dispatchSimulationMotion() {
+  if (!state.physics || !state.simulations) return;
+  const metrics = state.simulations[state.activeAxis]?.metrics;
+  window.dispatchEvent(
+    new CustomEvent("pidron:simulation-motion", {
+      detail: {
+        axis: state.activeAxis,
+        hoverThrottle: state.physics.hoverThrottle,
+        overshoot: metrics?.overshoot || 0,
+        saturation: metrics?.saturation || 0,
+        targetRate: state.config.targetRate
+      }
+    })
+  );
+}
+
 function renderDrone() {
   const count = motorCountFor(state.config.layout);
   if (state.pusherMotors.length !== count) {
@@ -1215,6 +1313,52 @@ async function connectFlightController() {
   }
 }
 
+async function readFlightControllerPid() {
+  if (!state.fcPort?.writable || !state.fcPort?.readable) {
+    el.fcStatus.textContent = "Спершу підключи польотник";
+    el.fcReadOutput.value = "Немає активного serial-порту. Підключи FC, потім натисни “Зчитати PID”.";
+    return;
+  }
+  const firmware = el.firmwareType.value;
+  const request =
+    firmware === "ardupilot"
+      ? "param show ATC_RAT_RLL*\nparam show ATC_RAT_PIT*\nparam show ATC_RAT_YAW*\n"
+      : "profile\nget roll_p\nget roll_i\nget roll_d\nget roll_f\nget pitch_p\nget pitch_i\nget pitch_d\nget pitch_f\nget yaw_p\nget yaw_i\nget yaw_d\nget yaw_f\n";
+  el.fcStatus.textContent = "Читаю PID...";
+  el.fcReadOutput.value = "";
+  const writer = state.fcPort.writable.getWriter();
+  try {
+    await writer.write(new TextEncoder().encode(request));
+  } catch (error) {
+    el.fcStatus.textContent = `Помилка запиту: ${error.message}`;
+    writer.releaseLock();
+    return;
+  }
+  writer.releaseLock();
+
+  const reader = state.fcPort.readable.getReader();
+  const decoder = new TextDecoder();
+  const deadline = Date.now() + 1800;
+  let output = "";
+  try {
+    while (Date.now() < deadline) {
+      const read = await Promise.race([
+        reader.read(),
+        new Promise((resolve) => window.setTimeout(() => resolve({ timeout: true }), 220))
+      ]);
+      if (read.timeout) continue;
+      if (read.done) break;
+      output += decoder.decode(read.value, { stream: true });
+    }
+  } catch (error) {
+    output += `\n[read error] ${error.message}`;
+  } finally {
+    reader.releaseLock();
+  }
+  el.fcReadOutput.value = output.trim() || "Порт відповів порожньо. Перевір CLI/MSP режим, baud rate і firmware.";
+  el.fcStatus.textContent = output.trim() ? "PID зчитано" : "Немає відповіді";
+}
+
 async function writeFlightControllerCommands() {
   if (!el.writeSafety.checked) {
     el.fcStatus.textContent = "Спершу увімкни safety checkbox";
@@ -1242,7 +1386,20 @@ async function analyzeBlackboxFile() {
     el.analysisReport.textContent = "Спершу вибери CSV/TXT/BBL файл.";
     return;
   }
-  const text = await file.text();
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const binaryScore = bytes.slice(0, 4096).filter((byte) => byte === 0 || byte > 126).length / Math.max(1, Math.min(bytes.length, 4096));
+  if (file.name.toLowerCase().endsWith(".bbl") && binaryScore > 0.08) {
+    el.analysisReport.textContent = [
+      `Файл: ${file.name}`,
+      "Це схоже на binary Blackbox .bbl.",
+      "",
+      "PIDron вже приймає файл напряму, але для чесного аналізу потрібен повний parser кадрів Blackbox: headers, gyro traces, motor channels, loop time, debug fields і FFT.",
+      "Я не буду видавати фейкові метрики з binary-даних. Експортуй CSV із Blackbox Explorer або додай наступним кроком native .bbl parser."
+    ].join("\n");
+    return;
+  }
+  const text = new TextDecoder("utf-8").decode(bytes);
   const report = analyzeLogText(text);
   el.analysisReport.textContent = report;
 }

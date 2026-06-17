@@ -8,19 +8,22 @@
   </head>
   <body data-theme="light">
     <div class="app-shell">
+      <aside class="rail" aria-label="Навігація PIDron">
+        <button class="brand-mark" id="brandUnlock" type="button" title="PIDron">P</button>
+        <button class="rail-item active" data-page="setupPage" type="button" title="Сетап">SET</button>
+        <button class="rail-item" data-page="tunePage" type="button" title="PID">PID</button>
+        <button class="rail-item" data-page="presetsPage" type="button" title="Пресети">PRS</button>
+        <button class="rail-item" data-page="flightPage" type="button" title="Польотник">FC</button>
+        <button class="rail-item" data-page="analysisPage" type="button" title="Аналіз">LOG</button>
+        <button class="rail-item rail-bottom" data-page="settingsPage" type="button" title="Налаштування">CFG</button>
+      </aside>
+
       <main class="main-app">
         <header class="app-header">
           <div>
-            <p class="eyebrow">Локальний симулятор</p>
-            <h1>PIDron</h1>
-            <p id="authorInfo" class="author-line">Автор: Oleksii "Kico" (@Oleksii1221)</p>
+            <p id="pageEyebrow" class="eyebrow">Сетап</p>
+            <h1 id="pageTitle">Конструктор дрона</h1>
           </div>
-          <nav class="page-tabs" aria-label="Розділи додатку">
-            <button class="page-tab active" data-page="simulatorPage" type="button">Симулятор</button>
-            <button class="page-tab" data-page="flightPage" type="button">Польотник</button>
-            <button class="page-tab" data-page="analysisPage" type="button">Аналіз</button>
-            <button class="page-tab" data-page="settingsPage" type="button">Налаштування</button>
-          </nav>
           <div class="header-actions">
             <select id="presetSelect" aria-label="Пресет дрона"></select>
             <input id="presetNameInput" class="preset-name-input" type="text" placeholder="Назва мого пресета" />
@@ -32,8 +35,8 @@
           </div>
         </header>
 
-        <section id="simulatorPage" class="page-view active">
-        <section class="dashboard-grid">
+        <section id="setupPage" class="page-view active">
+          <section class="dashboard-grid">
           <section id="build" class="panel controls-panel">
             <div class="panel-heading">
               <div>
@@ -213,7 +216,9 @@
             </section>
           </section>
         </section>
+        </section>
 
+        <section id="tunePage" class="page-view">
         <section id="pid" class="pid-layout">
           <section class="panel">
             <div class="panel-heading">
@@ -260,6 +265,19 @@
         </footer>
         </section>
 
+      <section id="presetsPage" class="page-view" aria-label="Пресети">
+        <div class="page-card wide-card">
+          <div class="page-titlebar">
+            <div>
+              <p class="eyebrow">Бібліотека</p>
+              <h2>Мої пресети</h2>
+              <p class="muted">Усі збережені сетапи живуть тут і дублюються в dropdown зверху.</p>
+            </div>
+          </div>
+          <div id="presetCards" class="preset-card-grid"></div>
+        </div>
+      </section>
+
       <section id="settingsPage" class="page-view" aria-label="Налаштування">
         <div class="page-card">
           <div class="page-titlebar">
@@ -279,7 +297,7 @@
             </label>
             <label>
               <span class="label-row">Тема <button class="help" type="button" aria-label="Пояснення">?</button></span>
-              <span class="tip">Світла, темна, контрастна або секретна пікмі після 5 кліків по рядку автора.</span>
+              <span class="tip">Світла, темна, контрастна або секретна пікмі після 5 кліків по логотипу PIDron.</span>
               <select id="theme">
                 <option value="light">Світла</option>
                 <option value="dark">Темна</option>
@@ -300,8 +318,15 @@
             </label>
           </div>
           <div class="about-kico">
-            <strong>Автор / Developer</strong>
-            <span>Oleksii "Kico" (@Oleksii1221). PIDron створений як локальний інструмент для експериментів із сетапами, PID, логами й польотниками.</span>
+            <div>
+              <strong>PIDron Desktop</strong>
+              <span>Local-first drone physics and PID tuning workstation.</span>
+            </div>
+            <dl class="license-list">
+              <div><dt>Maintainer</dt><dd>Oleksii “Kico” · @Oleksii1221</dd></div>
+              <div><dt>Version</dt><dd>1.1.0-dev</dd></div>
+              <div><dt>License</dt><dd>Private development build · © 2026</dd></div>
+            </dl>
           </div>
         </div>
       </section>
@@ -335,6 +360,7 @@
               </select>
             </label>
             <button id="connectFcBtn" class="secondary-btn" type="button">Підключити</button>
+            <button id="readFcBtn" class="secondary-btn" type="button">Зчитати PID</button>
             <label class="toggle-row">
               <input id="writeSafety" type="checkbox" />
               <span>Я розумію ризик запису PID у польотник</span>
@@ -347,6 +373,10 @@
             <span id="fcStatus" class="preset-status">Не підключено</span>
           </div>
           <textarea id="fcCommandOutput" class="command-output" spellcheck="false"></textarea>
+          <div class="fc-read-panel">
+            <h3>Поточні PID з польотника</h3>
+            <textarea id="fcReadOutput" class="command-output small-output" spellcheck="false" readonly></textarea>
+          </div>
           <p class="muted">
             Прямий запис поки працює як обережний лабораторний режим. Якщо Web Serial недоступний або протокол не підтверджений,
             використовуй згенерований CLI/params і перевіряй усе без пропів.
@@ -378,7 +408,7 @@
       </main>
     </div>
 
-    <script type="module" src="drone3d.js?v=20260617"></script>
-    <script src="app.js?v=20260617"></script>
+    <script type="module" src="drone3d.js?v=20260617b"></script>
+    <script src="app.js?v=20260617b"></script>
   </body>
 </html>

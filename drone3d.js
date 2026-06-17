@@ -7,12 +7,22 @@ let camera;
 let droneGroup;
 let rotors = [];
 let lastDetail = null;
+let motion = {
+  axis: "roll",
+  hoverThrottle: 0.45,
+  overshoot: 0,
+  saturation: 0,
+  targetRate: 500
+};
 
 if (canvas) {
   init3d();
   window.addEventListener("pidron:drone-change", (event) => {
     lastDetail = event.detail;
     rebuildDrone(event.detail);
+  });
+  window.addEventListener("pidron:simulation-motion", (event) => {
+    motion = { ...motion, ...event.detail };
   });
   if (window.pidronCurrentDrone) {
     lastDetail = window.pidronCurrentDrone;
@@ -109,10 +119,17 @@ function animate() {
   requestAnimationFrame(animate);
   if (droneGroup) {
     droneGroup.rotation.y += 0.003;
-    droneGroup.rotation.x = Math.sin(Date.now() * 0.0011) * 0.06;
+    const time = Date.now() * 0.001;
+    const responseGain = Math.min(0.22, 0.035 + motion.overshoot / 420 + motion.saturation * 0.18);
+    const axisWave = Math.sin(time * (1.2 + motion.targetRate / 700));
+    droneGroup.rotation.x =
+      (motion.axis === "pitch" ? axisWave * responseGain : Math.sin(time * 1.1) * 0.035) +
+      Math.sin(time * 0.7) * 0.015;
+    droneGroup.rotation.z =
+      motion.axis === "roll" ? axisWave * responseGain : Math.cos(time * 0.9) * 0.025;
   }
   rotors.forEach((rotor) => {
-    rotor.mesh.rotation.z += rotor.direction * 0.12;
+    rotor.mesh.rotation.z += rotor.direction * (0.08 + motion.hoverThrottle * 0.12 + motion.targetRate / 9000);
   });
   renderer.render(scene, camera);
 }
