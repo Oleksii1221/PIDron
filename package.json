@@ -101,7 +101,7 @@
     }
   },
   "dependencies": {
-    "three": "^0.181.2"
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
