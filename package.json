@@ -104,7 +104,7 @@
     "three": "^0.181.2"
   },
   "devDependencies": {
-    "@electron/packager": "^18.4.4",
+    "@electron/packager": "^20.0.1",
     "electron": "^42.4.1",
     "electron-builder": "^26.15.3"
   }
