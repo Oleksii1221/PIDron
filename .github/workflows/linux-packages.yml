@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       upload_release:
-        description: Upload packages to the v1.2.0 release
+        description: Upload packages to the v1.2.1 release
         required: true
         default: "true"
         type: choice
@@ -48,7 +48,7 @@ jobs:
         if: ${{ github.event.inputs.upload_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.0
+          tag_name: v1.2.1
           files: |
             dist-installer/*.deb
             dist-installer/*.rpm

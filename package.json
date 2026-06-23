@@ -1,6 +1,6 @@
 {
   "name": "pidron",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "PIDron desktop drone emulator and PID tuning assistant.",
   "author": "Oleksii \"Kico\" (@Oleksii1221)",
   "license": "MIT",
@@ -27,8 +27,8 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-packager . PIDron --platform=win32 --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\"",
-    "build:linux": "electron-packager . PIDron --platform=linux --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/.git($|/)\"",
+    "build:win": "electron-packager . PIDron --platform=win32 --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/dist-installer($|/)\" --ignore=\"^/.git($|/)\"",
+    "build:linux": "electron-packager . PIDron --platform=linux --arch=x64 --out=dist --overwrite --asar --prune=true --ignore=\"^/dist($|/)\" --ignore=\"^/dist-installer($|/)\" --ignore=\"^/.git($|/)\"",
     "build:all": "npm run build:win && npm run build:linux",
     "build:installer": "electron-builder --win nsis --x64",
     "build:ubuntu": "electron-builder --linux deb --x64 --publish never",

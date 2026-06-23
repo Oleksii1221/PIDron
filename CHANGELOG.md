@@ -2,6 +2,12 @@
 
 All notable PIDron changes are tracked here.
 
+## 1.2.1 - Serial Port Fix
+
+- Fixed Electron Web Serial access by adding main-process serial port selection.
+- Added a native PIDron serial chooser when multiple COM/USB serial ports are available.
+- Added a clearer warning when no serial ports are detected or another app is holding the port.
+
 ## 1.2.0 - Desktop Release
 
 - Added the Electron desktop app flow.
